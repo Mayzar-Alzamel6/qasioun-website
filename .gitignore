@@ -1,0 +1,16 @@
+# Raw AI-generated source images (22MB, green-screen originals) --
+# kept locally as source material for scripts/remove_green_screen.py,
+# not needed in the deployed site or in version control.
+assets/img/hero/raw/
+
+# Reference menu PDFs (~78MB combined) -- source material for future
+# menu-building phases, not part of the deployed static site.
+*.pdf
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.claude/
+
+# Local-only notes (never published)
+_private/
