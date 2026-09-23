@@ -755,11 +755,21 @@ img {
   gap: 0.5rem;
   overflow-x: auto;
   padding: 0.75rem 1rem;
-  background: rgba(255, 254, 247, 0.94);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 254, 247, 0.97);
   border-bottom: 1px solid var(--menu-line);
   scrollbar-width: none;
+}
+
+/* Sliding pill behind the selected chip (positioned by menu.js) */
+.menu__chips-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 9999px;
+  background: var(--color-bg-deep);
+  box-shadow: 0 4px 12px rgba(34, 12, 0, 0.25);
+  pointer-events: none;
+  will-change: transform;
 }
 
 .menu__chips::-webkit-scrollbar { display: none; }
@@ -781,9 +791,99 @@ img {
   transition: background 0.2s ease, color 0.2s ease;
 }
 
+.menu__chip {
+  position: relative;
+  z-index: 1;
+}
+
+.menu__chip:active { transform: scale(0.96); }
+
+/* The pill itself is the indicator underneath */
 .menu__chip.is-active {
+  background: transparent;
+  color: var(--color-gold);
+}
+
+/* Press feedback */
+.stepper button:active,
+.menu__pick:active { transform: scale(0.9); }
+
+.stepper output { display: inline-block; }
+
+/* Dot that flies from "+" to the cart count */
+.fly-dot {
+  position: fixed;
+  z-index: 200;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff6c8, var(--color-gold) 55%, #b8922e);
+  box-shadow: 0 0 12px rgba(229, 210, 111, 0.8);
+  pointer-events: none;
+}
+
+.cartbar__count { display: inline-grid; will-change: transform; }
+
+/* Sheet: "ready in WhatsApp" state */
+.cart.is-done .cart__lines,
+.cart.is-done .cart__form { display: none; }
+
+.cart__done {
+  padding: 2rem 1.5rem calc(1.75rem + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.cart__check {
+  width: 76px;
+  height: 76px;
+  color: #1f9e4f;
+  margin: 0 auto 1rem;
+}
+
+.cart__check circle { stroke-dasharray: 151; stroke-dashoffset: 151; }
+.cart__check path { stroke-dasharray: 36; stroke-dashoffset: 36; }
+
+.cart.is-done .cart__check circle { animation: draw 0.5s ease-out forwards; }
+.cart.is-done .cart__check path { animation: draw 0.35s 0.4s ease-out forwards; }
+
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+.cart__done h3 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  line-height: 1.3;
+}
+
+.cart__done p {
+  margin: 0.35rem 0 1.5rem;
+  color: #7a6446;
+}
+
+.cart__back {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 16px;
   background: var(--color-bg-deep);
   color: var(--color-gold);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cart__again {
+  margin-top: 0.6rem;
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: transparent;
+  color: #7a6446;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart__check circle, .cart__check path { stroke-dashoffset: 0; animation: none !important; }
 }
 
 .menu__list {

@@ -105,14 +105,34 @@ document.addEventListener('DOMContentLoaded', () => {
     chips.hidden = !!q;
   };
 
+  // Motion is optional: everything works without GSAP or with reduced motion.
+  const motion = !!window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (motion && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+
+  // One dark pill slides behind the chips to the selected one
+  const indicator = document.createElement('span');
+  indicator.className = 'menu__chips-indicator';
+  indicator.setAttribute('aria-hidden', 'true');
+  chips.prepend(indicator);
+
+  const moveIndicator = (chip, animate) => {
+    const vars = { x: chip.offsetLeft, width: chip.offsetWidth, height: chip.offsetHeight, y: chip.offsetTop };
+    if (motion && animate) gsap.to(indicator, { ...vars, duration: 0.35, ease: 'power3.out', overwrite: true });
+    else if (window.gsap) gsap.set(indicator, vars);
+    else Object.assign(indicator.style, {
+      transform: `translate(${vars.x}px, ${vars.y}px)`, width: `${vars.width}px`, height: `${vars.height}px`
+    });
+  };
+
   // Mark the selected chip and center it in the bar (horizontal scroll only;
   // scrollIntoView could also scroll the page).
-  const setActive = (id) => {
+  const setActive = (id, animate = true) => {
     chips.querySelectorAll('.menu__chip').forEach((b) => {
       const on = b.dataset.filter === id;
       b.classList.toggle('is-active', on);
       b.setAttribute('aria-pressed', String(on));
       if (on) {
+        moveIndicator(b, animate);
         const bar = chips.getBoundingClientRect();
         const chip = b.getBoundingClientRect();
         chips.scrollBy({ left: (chip.left + chip.width / 2) - (bar.left + bar.width / 2), behavior: 'smooth' });
@@ -120,20 +140,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // The newly shown items cascade in (first 12 only; the rest are below the fold)
+  const revealView = () => {
+    if (!motion) return;
+    const shown = [...list.querySelectorAll('.menu__cat:not([hidden])')];
+    const rows = shown.flatMap((c) => [...c.querySelectorAll('.menu__item:not([hidden])')]).slice(0, 12);
+    gsap.fromTo(shown.map((c) => c.querySelector('.menu__banner')).slice(0, 2),
+      { scale: 1.04, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.45, ease: 'power2.out', overwrite: true });
+    gsap.fromTo(rows, { autoAlpha: 0, y: 12 },
+      { autoAlpha: 1, y: 0, duration: 0.35, ease: 'power2.out', stagger: 0.025, overwrite: true, clearProps: 'transform,opacity,visibility' });
+  };
+
+  // Layout height changed: parallax triggers below must be re-measured
+  let refreshTimer;
+  const refreshScroll = () => {
+    if (!motion || !window.ScrollTrigger) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => ScrollTrigger.refresh(), 150);
+  };
+
   chips.addEventListener('click', (e) => {
     const chip = e.target.closest('.menu__chip');
-    if (!chip) return;
+    if (!chip || chip.dataset.filter === filter) return;
     filter = chip.dataset.filter;
     setActive(filter);
     applyView();
+    revealView();
+    refreshScroll();
     // Bring the start of the (now filtered) list up under the sticky chips
     const offset = 62 + chips.offsetHeight + 8;
     const y = list.getBoundingClientRect().top + window.scrollY - offset;
     if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
   });
 
-  search.addEventListener('input', applyView);
-  setActive(filter);
+  search.addEventListener('input', () => { applyView(); refreshScroll(); });
+  setActive(filter, false);
+  // Fonts change chip widths after first paint
+  if (document.fonts) document.fonts.ready.then(() => setActive(filter, false));
+  window.addEventListener('resize', () => {
+    const active = chips.querySelector('.menu__chip.is-active');
+    if (active) moveIndicator(active, false);
+  });
+
+  // Parallax on banner photos only (icon banners stay still)
+  if (motion && window.ScrollTrigger) {
+    list.querySelectorAll('.menu__banner img').forEach((img) => {
+      gsap.fromTo(img, { yPercent: -8, scale: 1.18 }, {
+        yPercent: 8, scale: 1.18, ease: 'none',
+        scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true }
+      });
+    });
+  }
 
   // The WhatsApp button sits over the price column (left side in RTL):
   // hide it while the menu list is on screen.
@@ -221,12 +278,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const tableError = sheet.querySelector('.cart__error');
   const notes = sheet.querySelector('.cart__notes textarea');
 
+  const countEl = bar.querySelector('.cartbar__count');
+  const totalEl = bar.querySelector('.cartbar__total');
+  const shownTotal = { v: 0 }; // animated value behind the bar total
+
   const paintCart = () => {
     const { count, sum } = totals();
     bar.hidden = count === 0;
     document.body.classList.toggle('has-cart', count > 0);
-    bar.querySelector('.cartbar__count').textContent = count;
-    bar.querySelector('.cartbar__total').textContent = `${money(sum)} ${CURRENCY}`;
+    countEl.textContent = count;
+    // The bar total counts up/down to the new value instead of jumping
+    if (motion && !bar.hidden) {
+      gsap.to(shownTotal, {
+        v: sum, duration: 0.45, ease: 'power2.out', overwrite: true,
+        onUpdate: () => { totalEl.textContent = `${money(Math.round(shownTotal.v))} ${CURRENCY}`; }
+      });
+    } else {
+      shownTotal.v = sum;
+      totalEl.textContent = `${money(sum)} ${CURRENCY}`;
+    }
     sheet.querySelector('.cart__sum').textContent = `${money(sum)} ${CURRENCY}`;
 
     lines.innerHTML = Object.entries(cart).map(([k, n]) => {
@@ -246,18 +316,73 @@ document.addEventListener('DOMContentLoaded', () => {
     save();
     paintItem(key);
     paintCart();
+    // Quantity pops in the menu row and in the sheet
+    if (motion && n) {
+      document.querySelectorAll(`[data-sub="${key}"]`).forEach((b) => {
+        const out = b.parentElement.querySelector('output');
+        if (out) gsap.fromTo(out, { scale: 1.4 }, { scale: 1, duration: 0.3, ease: 'back.out(3)' });
+      });
+    }
+  };
+
+  // Count badge "catches" the flying dot
+  const bump = () => {
+    if (motion) gsap.fromTo(countEl, { scale: 1.35 }, { scale: 1, duration: 0.4, ease: 'back.out(3)' });
+    if (navigator.vibrate) navigator.vibrate(12);
+  };
+
+  // A gold dot flies in an arc from the tapped "+" / price to the cart count
+  // `from` is the tapped control's rect, measured before change() re-renders it
+  const flyToCart = (from, barWasHidden) => {
+    if (!motion) { bump(); return; }
+    const launch = () => {
+      const to = countEl.getBoundingClientRect();
+      const dot = document.createElement('span');
+      dot.className = 'fly-dot';
+      dot.style.left = `${from.left + from.width / 2 - 7}px`;
+      dot.style.top = `${from.top + from.height / 2 - 7}px`;
+      document.body.appendChild(dot);
+      const dx = (to.left + to.width / 2) - (from.left + from.width / 2);
+      const dy = (to.top + to.height / 2) - (from.top + from.height / 2);
+      gsap.to(dot, { x: dx, duration: 0.55, ease: 'power1.out' });
+      gsap.to(dot, {
+        y: dy, scale: 0.55, duration: 0.55, ease: 'power2.in',
+        onComplete: () => { dot.remove(); bump(); }
+      });
+    };
+    // Let the bar finish sliding in (CSS barIn, 0.25s) before aiming at it
+    if (barWasHidden) setTimeout(launch, 260); else launch();
   };
 
   document.addEventListener('click', (e) => {
     const add = e.target.closest('[data-add]');
     const sub = e.target.closest('[data-sub]');
-    if (add) change(add.dataset.add, +1);
-    else if (sub) change(sub.dataset.sub, -1);
+    if (add) {
+      // Measure before change(): it replaces the tapped button's markup
+      const fromMenu = list.contains(add);
+      const from = add.getBoundingClientRect();
+      const barWasHidden = bar.hidden;
+      change(add.dataset.add, +1);
+      if (fromMenu) flyToCart(from, barWasHidden);
+    } else if (sub) change(sub.dataset.sub, -1);
   });
+
+  // After WhatsApp opens: an honest "ready" state (we can't know it was sent)
+  const done = sheet.querySelector('.cart__done');
+  const showDone = (on) => {
+    sheet.classList.toggle('is-done', on);
+    done.hidden = !on;
+  };
+  done.querySelector('.cart__again').addEventListener('click', () => {
+    showDone(false);
+    sheet.querySelector('.cart__clear').click();
+  });
+  done.querySelector('.cart__back').addEventListener('click', () => sheet.close());
 
   const openSheet = () => {
     tableInput.value = table;
     tableError.hidden = true;
+    showDone(false);
     paintCart();
     sheet.showModal();
     document.documentElement.classList.add('cart-open');
@@ -310,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ].filter((l) => l !== null).join('\n');
 
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+    showDone(true);
   });
 
   // Initial paint (restored cart)
