@@ -68,4 +68,17 @@
     if (href) a.href = href;
     else a.hidden = true;
   });
+
+  // Smooth scrolling for in-page links only (see the note on `html` in
+  // style.css: a global scroll-behavior: smooth breaks ScrollTrigger).
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || a.getAttribute('href').length < 2) return;
+    const target = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    if (a.classList.contains('skip-link')) target.setAttribute('tabindex', '-1'), target.focus({ preventScroll: true });
+  });
 })();

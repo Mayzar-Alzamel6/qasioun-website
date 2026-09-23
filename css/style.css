@@ -27,8 +27,11 @@
   padding: 0;
 }
 
+/* No `scroll-behavior: smooth` here: it turns ScrollTrigger's instant
+   scroll restores (on refresh: resize, font load, menu filter) into slow
+   animated scrolls, which left the pinned hero stuck on a stale frame.
+   Anchor links are smooth-scrolled in js/site.js instead. */
 html {
-  scroll-behavior: smooth;
   font-family: var(--font-body);
   background-color: var(--color-bg-deep);
   color: #fff;
@@ -1667,9 +1670,6 @@ input:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
 
   .hero__steam span,
   .hero__scroll-hint,
