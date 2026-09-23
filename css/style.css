@@ -61,6 +61,80 @@ a {
   flex: 0 0 auto;
 }
 
+/* --------------------------------------------------------------------------
+   Welcome screen (removed by main.js once the hero images are decoded).
+   The CSS auto-hide at 3.2s is a safety net if JavaScript never runs.
+   -------------------------------------------------------------------------- */
+html.intro-on { overflow: hidden; }
+.no-intro .intro { display: none; }
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 140, 40, 0.16), transparent 45%),
+    var(--color-bg-deep);
+  transition: opacity 0.55s ease, transform 0.55s ease, visibility 0.55s;
+  animation: introFailsafe 0.4s 3.2s forwards;
+}
+
+.intro.is-leaving {
+  opacity: 0;
+  transform: scale(1.04);
+  visibility: hidden;
+}
+
+@keyframes introFailsafe { to { opacity: 0; visibility: hidden; } }
+
+.intro__inner {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  animation: introIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes introIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+}
+
+.brand-mark.intro__mark { --mark-size: 84px; }
+
+.intro__flame {
+  width: 34px;
+  height: 48px;
+  transform-origin: 50% 100%;
+  animation: flicker 0.9s ease-in-out infinite alternate;
+}
+
+.intro__flame-outer { fill: #f28b2a; opacity: 0.9; }
+.intro__flame-inner { fill: #ffe39a; }
+
+@keyframes flicker {
+  0% { transform: scale(1, 1) skewX(0deg); }
+  35% { transform: scale(0.96, 1.06) skewX(-3deg); }
+  70% { transform: scale(1.03, 0.97) skewX(2deg); }
+  100% { transform: scale(0.98, 1.04) skewX(-1deg); }
+}
+
+.intro__name {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  color: var(--color-gold);
+}
+
+/* Living hero scene canvas (js/hero-fx.js): above the oven glow, under the pizza */
+.hero__fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* Keyboard skip link: hidden until focused */
 .skip-link {
   position: fixed;
@@ -286,6 +360,9 @@ img {
   z-index: 2;
   transform-origin: top right;
   will-change: opacity;
+  /* Feather the image's rectangular edges into the scene (static mask) */
+  -webkit-mask-image: radial-gradient(ellipse 58% 60% at 55% 48%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(ellipse 58% 60% at 55% 48%, #000 52%, transparent 100%);
 }
 
 .hero__oven-glow img {
@@ -882,7 +959,10 @@ img {
   cursor: pointer;
 }
 
+.static-hero .hero__fx { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
+  .intro, .intro__inner, .intro__flame { animation: none !important; }
   .cart__check circle, .cart__check path { stroke-dashoffset: 0; animation: none !important; }
 }
 

@@ -8,6 +8,31 @@ document.addEventListener('DOMContentLoaded', () => {
     history.scrollRestoration = 'manual';
   }
 
+  const heroFx = window.heroFx || { setHeat() {}, setDust() {}, flourBurst() {} };
+
+  // Decode every hero image up front: layers start at opacity 0, so the
+  // browser would otherwise decode each ~1000px WebP the first time it
+  // appears mid-scroll, causing a visible hitch per topping.
+  const heroReady = Promise.all([...document.querySelectorAll('.hero img')].map((img) =>
+    (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
+  ));
+
+  // Welcome screen (.intro): shown until the hero images are ready — at least
+  // 700ms so it doesn't flash, at most 2.5s. The inline <head> script already
+  // skipped it (html.no-intro) for deep links, reduced motion, repeat visits.
+  const intro = document.querySelector('.intro');
+  if (intro && !document.documentElement.classList.contains('no-intro')) {
+    try { sessionStorage.setItem('intro-seen', '1'); } catch (e) { /* ignore */ }
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    Promise.all([Promise.race([heroReady, wait(2500)]), wait(700)]).then(() => {
+      intro.classList.add('is-leaving');
+      document.documentElement.classList.remove('intro-on');
+      setTimeout(() => intro.remove(), 600);
+    });
+  } else if (intro) {
+    intro.remove();
+  }
+
   // Reduced-motion users, or GSAP failed to load from the CDN: show the final
   // baked state (CSS .static-hero) instead of building the scroll timeline.
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -22,13 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mobile browsers resize the viewport when the address bar shows/hides
   // while scrolling; re-measuring the pin then made the scene jump.
   ScrollTrigger.config({ ignoreMobileResize: true });
-
-  // Decode every hero image up front: layers start at opacity 0, so the
-  // browser would otherwise decode each ~1000px WebP the first time it
-  // appears mid-scroll, causing a visible hitch per topping.
-  document.querySelectorAll('.hero img').forEach((img) => {
-    if (img.decode) img.decode().catch(() => {});
-  });
 
   const hero = document.querySelector('.hero');
   const stack = document.querySelector('.hero__stack');
@@ -84,6 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateProgress = () => {
     progressFill.style.transform = `scaleX(${tl.progress()})`;
     const t = tl.time();
+    // Living scene (js/hero-fx.js): oven heat peaks while the pizza bakes,
+    // flour dust belongs to the dough stages.
+    const heat = t < 6.8 ? 0.15
+      : t < 8.1 ? 0.15 + (t - 6.8) / 1.3 * 0.85
+      : t < 9.5 ? 1
+      : Math.max(0.45, 1 - (t - 9.5) / 0.8 * 0.55);
+    heroFx.setHeat(heat);
+    heroFx.setDust(t < 2.8 ? 1 : Math.max(0, 1 - (t - 2.8) / 1.5));
     let idx = -1;
     stages.forEach(([at], i) => { if (t >= at) idx = i; });
     if (idx === currentStage) return;
@@ -191,6 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
       { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power2.out', immediateRender: false },
       10.2
     );
+
+  // Flour puffs up when the dough ball first hits the board (bounce.out's first
+  // impact is ~36% into the 1s drop that starts at 0.5). Forward scroll only.
+  tl.call(() => {
+    if (tl.scrollTrigger && tl.scrollTrigger.direction === 1) heroFx.flourBurst();
+  }, null, 0.86);
 
   // 3-6) Each topping spreads outward from the pizza's center: the next
   // (cumulative) layer is shown through a growing radial mask (--r, see
