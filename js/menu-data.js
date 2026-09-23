@@ -4,7 +4,7 @@
  * Each category:
  *   id       unique, latin letters (used in links: #cat-<id>)
  *   title    shown on the banner and the category chip
- *   img      optional banner photo path; without it, `icon` (emoji) is shown
+ *   img      optional banner photo path; without it, `icon` (a name from js/icons.js) is shown
  *   items    [name, price] — price as a string, e.g. '2.50'
  *   cols     optional size/variant columns; then each item is
  *            [name, [price per column]] and null = not available
@@ -25,14 +25,14 @@ window.MENU = [
     ]
   },
   {
-    id: 'pastries', title: 'المعجنات', icon: '🥐',
+    id: 'pastries', title: 'المعجنات', icon: 'croissant',
     items: [
       ['زعتر', '0.50'], ['جبنة', '0.75'], ['جبنة مع زعتر', '0.75'], ['لحمة', '1.00'],
       ['محمرة', '0.75'], ['سبانخ', '1.00'], ['مكس أجبان', '1.25'], ['كروسان شوكولا', '1.00']
     ]
   },
   {
-    id: 'sandwiches', title: 'السندويشات', icon: '🥙',
+    id: 'sandwiches', title: 'السندويشات', icon: 'sandwich',
     cols: ['عادي', 'صاج'],
     sizePrefix: 'خبز ',
     orderPrefix: 'ساندويش ',
@@ -45,28 +45,28 @@ window.MENU = [
     note: 'الأسعار حسب نوع الخبز'
   },
   {
-    id: 'starters', title: 'المقبلات', icon: '🥗',
+    id: 'starters', title: 'المقبلات', icon: 'salad',
     items: [
       ['صحن حمص', '1.50'], ['صحن فول', '1.50'], ['متبل باذنجان', '1.50'],
       ['بطاطا مقلية', '1.50'], ['سلطة موسمية', '2.00']
     ]
   },
   {
-    id: 'sweets', title: 'الحلويات', icon: '🍰',
+    id: 'sweets', title: 'الحلويات', icon: 'cake',
     items: [
       ['كنافة', '1.50'], ['تشيز كيك', '2.00'], ['كيك شوكولا', '2.00'],
       ['مهلبية', '1.50'], ['آيس كريم (طابتين)', '1.25']
     ]
   },
   {
-    id: 'hot', title: 'المشروبات الساخنة', icon: '☕',
+    id: 'hot', title: 'المشروبات الساخنة', icon: 'coffee',
     items: [
       ['شاي', '0.75'], ['قهوة عربية', '1.00'], ['إسبريسو', '1.75'],
       ['كابتشينو', '2.50'], ['لاتيه', '2.50'], ['هوت شوكليت', '2.00']
     ]
   },
   {
-    id: 'cold', title: 'المشروبات الباردة', icon: '🥤',
+    id: 'cold', title: 'المشروبات الباردة', icon: 'cup',
     cols: ['صغير', 'كبير'],
     items: [
       ['عصير برتقال', ['1.75', '2.25']],

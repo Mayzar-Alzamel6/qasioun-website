@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     [4.8, 'السلامي'],
     [5.8, 'الزيتون'],
     [6.8, 'إلى الفرن'],
-    [8.9, 'جاهزة! 🍕']
+    [8.9, 'جاهزة']
   ];
   stepsList.innerHTML = stages.map(([, name]) => `<li>${name}</li>`).join('');
   const stepItems = [...stepsList.children];

@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="menu__banner${c.img ? '' : ' menu__banner--icon'}">
           ${c.img
             ? `<img src="${c.img}" alt="" loading="lazy" decoding="async">`
-            : `<span class="menu__icon" aria-hidden="true">${c.icon || '🍽️'}</span>`}
+            : (window.icon ? window.icon(c.icon, 'menu__icon') : '')}
           <h3>${c.title}</h3>
         </div>
         ${head}

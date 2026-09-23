@@ -53,6 +53,30 @@ a {
   display: none !important;
 }
 
+/* Inline line icons (js/icons.js and inline SVG in index.html) */
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  flex: 0 0 auto;
+}
+
+/* Keyboard skip link: hidden until focused */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 300;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  background: var(--color-gold);
+  color: var(--color-bg-deep);
+  font-weight: 700;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus { transform: none; }
+
 img {
   display: block;
   max-width: 100%;
@@ -801,9 +825,10 @@ img {
   left: 1.4rem;
   top: 50%;
   transform: translateY(-50%) rotate(-8deg);
-  font-size: 4.2rem;
-  line-height: 1;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  width: 76px;
+  height: 76px;
+  color: var(--color-gold);
+  opacity: 0.9;
 }
 
 .menu__banner::after {
@@ -931,7 +956,16 @@ img {
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  position: relative;
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+/* 44px touch target around the 36px visual circle */
+.menu__add::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
 }
 
 .menu__add:active { transform: scale(0.9); }
@@ -950,8 +984,8 @@ img {
 }
 
 .stepper button {
-  width: 34px;
-  height: 36px;
+  width: 38px;
+  height: 44px;
   border: 0;
   background: transparent;
   color: inherit;
