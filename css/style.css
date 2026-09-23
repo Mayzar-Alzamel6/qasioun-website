@@ -71,9 +71,9 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1.5rem;
-  background: rgba(34, 12, 0, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Solid-ish instead of backdrop-filter: blurring the animating hero
+     behind the navbar had to be recomputed on every scroll frame. */
+  background: rgba(34, 12, 0, 0.95);
   border-bottom: 1px solid rgba(229, 210, 111, 0.15);
   transition: background-color 0.3s ease;
 }
@@ -249,22 +249,36 @@ img {
 }
 
 /* Oven Glow (aligns with the blurred arch in top-right) */
+/* Two copies of the glow: a pre-blurred dim one and a sharp one on top.
+   GSAP only crossfades their opacity (compositor-only) instead of
+   tweening filter: blur(), which re-rasterized the image every frame. */
 .hero__oven-glow {
   position: absolute;
   top: 0%;
   right: -2%;
   width: 48%;
   opacity: 0.5;
-  filter: blur(7px) brightness(0.6);
   pointer-events: none;
   z-index: 2;
   transform-origin: top right;
+  will-change: opacity;
 }
 
 .hero__oven-glow img {
   width: 100%;
   height: auto;
   filter: drop-shadow(0 0 20px rgba(255, 110, 20, 0.5));
+  will-change: opacity;
+}
+
+.hero__oven-glow .glow-soft {
+  filter: blur(7px) brightness(0.6);
+}
+
+.hero__oven-glow .glow-sharp {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
 }
 
 /* Pizza Layers Stack */
@@ -274,6 +288,7 @@ img {
   pointer-events: none;
   z-index: 3;
   transform-origin: 46% 52%;
+  will-change: transform, opacity;
 }
 
 .hero__layer {
@@ -287,7 +302,30 @@ img {
   opacity: 0;
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.7));
+  /* Own compositor layer: opacity/transform tweens then skip repaint */
+  will-change: opacity, transform;
+}
+
+/* Only the small dough ball keeps a real drop-shadow (it is never masked).
+   The disc layers use the cheap static .hero__shadow below instead:
+   a per-layer drop-shadow had to be re-blurred every frame while the
+   toppings' radial mask was animating, which caused the scroll stutter. */
+.hero__layer[data-layer="dough-ball"] {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.65));
+}
+
+/* Soft contact shadow under the pizza disc (gradient, no filter) */
+.hero__shadow {
+  position: absolute;
+  left: 46%;
+  top: 54%;
+  width: 84%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(10, 4, 0, 0.6) 70%, rgba(10, 4, 0, 0) 100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Topping layers are revealed through a radial mask that grows from the
@@ -326,11 +364,18 @@ img {
   width: 28px;
   height: 75%;
   align-self: flex-end;
-  background: radial-gradient(ellipse at center, rgba(255, 250, 240, 0.55) 0%, rgba(255, 250, 240, 0) 70%);
+  /* Soft gradient instead of filter: blur() — same look, no per-frame blur */
+  background: radial-gradient(ellipse closest-side, rgba(255, 250, 240, 0.45) 0%, rgba(255, 250, 240, 0.15) 55%, rgba(255, 250, 240, 0) 100%);
   border-radius: 50%;
-  filter: blur(10px);
   opacity: 0;
+  will-change: transform, opacity;
   animation: steamRise 3.6s infinite ease-out;
+  animation-play-state: paused; /* only runs once the pizza is baked */
+}
+
+.hero.is-baked .hero__steam span,
+.static-hero .hero__steam span {
+  animation-play-state: running;
 }
 
 .hero__steam span:nth-child(1) { animation-delay: 0s; }
@@ -605,10 +650,8 @@ img {
   color: var(--color-cream);
   padding: 0.5rem 0.9rem;
   border-radius: 9999px;
-  background: rgba(34, 12, 0, 0.55);
+  background: rgba(34, 12, 0, 0.8);
   border: 1px solid rgba(229, 210, 111, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 /* --------------------------------------------------------------------------
@@ -703,6 +746,9 @@ img {
   align-items: center;
   min-height: 40px;
   padding: 0.4rem 1rem;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
   border-radius: 9999px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -1374,7 +1420,11 @@ input:focus-visible {
 
 .static-hero .hero__oven-glow {
   opacity: 0.8 !important;
-  filter: none !important;
+}
+
+.static-hero .hero__oven-glow .glow-sharp,
+.static-hero .hero__shadow {
+  opacity: 1 !important;
 }
 
 .static-hero .hero__menu-btn {

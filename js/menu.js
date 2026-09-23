@@ -30,8 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------------------------------
      Render
      --------------------------------------------------------------------- */
-  chips.innerHTML = data.map((c) =>
-    `<a class="menu__chip" href="#cat-${c.id}" data-id="${c.id}">${c.title}</a>`
+  chips.innerHTML = [{ id: 'all', title: 'الكل' }, ...data].map((c) =>
+    `<button type="button" class="menu__chip" data-filter="${c.id}" aria-pressed="false">${c.title}</button>`
   ).join('');
 
   list.innerHTML = data.map((c) => {
@@ -78,34 +78,62 @@ document.addEventListener('DOMContentLoaded', () => {
   }).join('');
 
   /* ---------------------------------------------------------------------
-     Category chips: highlight the category currently in view. The chip
-     bar is scrolled horizontally only (scrollIntoView could also scroll
-     the page).
+     Category filter + live search
+     Chips filter the list to one category ("الكل" shows everything).
+     A search query always looks across the whole menu; clearing it
+     brings the selected category back.
      --------------------------------------------------------------------- */
+  const norm = (s) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
+  let filter = 'all';
+
+  const applyView = () => {
+    const q = norm(search.value.trim());
+    let any = false;
+    list.querySelectorAll('.menu__cat').forEach((cat) => {
+      const inScope = q || filter === 'all' || cat.dataset.id === filter;
+      const title = norm(cat.querySelector('h3').textContent);
+      let shown = 0;
+      cat.querySelectorAll('.menu__item').forEach((li) => {
+        const hit = inScope && (!q || title.includes(q) || norm(li.querySelector('.menu__name').textContent).includes(q));
+        li.hidden = !hit;
+        if (hit) shown++;
+      });
+      cat.hidden = shown === 0;
+      if (shown) any = true;
+    });
+    empty.hidden = any;
+    chips.hidden = !!q;
+  };
+
+  // Mark the selected chip and center it in the bar (horizontal scroll only;
+  // scrollIntoView could also scroll the page).
   const setActive = (id) => {
-    chips.querySelectorAll('.menu__chip').forEach((a) => {
-      const on = a.dataset.id === id;
-      a.classList.toggle('is-active', on);
+    chips.querySelectorAll('.menu__chip').forEach((b) => {
+      const on = b.dataset.filter === id;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', String(on));
       if (on) {
-        a.setAttribute('aria-current', 'true');
         const bar = chips.getBoundingClientRect();
-        const chip = a.getBoundingClientRect();
+        const chip = b.getBoundingClientRect();
         chips.scrollBy({ left: (chip.left + chip.width / 2) - (bar.left + bar.width / 2), behavior: 'smooth' });
-      } else {
-        a.removeAttribute('aria-current');
       }
     });
   };
-  let current = null;
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (e.isIntersecting && e.target.dataset.id !== current) {
-        current = e.target.dataset.id;
-        setActive(current);
-      }
-    });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  list.querySelectorAll('.menu__cat').forEach((s) => io.observe(s));
+
+  chips.addEventListener('click', (e) => {
+    const chip = e.target.closest('.menu__chip');
+    if (!chip) return;
+    filter = chip.dataset.filter;
+    setActive(filter);
+    applyView();
+    // Bring the start of the (now filtered) list up under the sticky chips
+    const offset = 62 + chips.offsetHeight + 8;
+    const y = list.getBoundingClientRect().top + window.scrollY - offset;
+    if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
+  });
+
+  search.addEventListener('input', applyView);
+  setActive(filter);
 
   // The WhatsApp button sits over the price column (left side in RTL):
   // hide it while the menu list is on screen.
@@ -116,27 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }).observe(list);
   }
 
-  /* ---------------------------------------------------------------------
-     Live search: hides non-matching items and empty categories
-     --------------------------------------------------------------------- */
-  const norm = (s) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
-  search.addEventListener('input', () => {
-    const q = norm(search.value.trim());
-    let any = false;
-    list.querySelectorAll('.menu__cat').forEach((cat) => {
-      const title = norm(cat.querySelector('h3').textContent);
-      let shown = 0;
-      cat.querySelectorAll('.menu__item').forEach((li) => {
-        const hit = !q || title.includes(q) || norm(li.querySelector('.menu__name').textContent).includes(q);
-        li.hidden = !hit;
-        if (hit) shown++;
-      });
-      cat.hidden = shown === 0;
-      if (shown) any = true;
-    });
-    empty.hidden = any;
-    chips.hidden = !!q;
-  });
 
   /* ---------------------------------------------------------------------
      Table number (from the table's QR code: ?t=5)

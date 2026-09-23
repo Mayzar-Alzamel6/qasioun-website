@@ -19,9 +19,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Register GSAP ScrollTrigger plugin
   gsap.registerPlugin(ScrollTrigger);
 
+  // Mobile browsers resize the viewport when the address bar shows/hides
+  // while scrolling; re-measuring the pin then made the scene jump.
+  ScrollTrigger.config({ ignoreMobileResize: true });
+
+  // Decode every hero image up front: layers start at opacity 0, so the
+  // browser would otherwise decode each ~1000px WebP the first time it
+  // appears mid-scroll, causing a visible hitch per topping.
+  document.querySelectorAll('.hero img').forEach((img) => {
+    if (img.decode) img.decode().catch(() => {});
+  });
+
   const hero = document.querySelector('.hero');
   const stack = document.querySelector('.hero__stack');
   const ovenGlow = document.querySelector('.hero__oven-glow');
+  const glowSharp = ovenGlow.querySelector('.glow-sharp');
+  const shadow = document.querySelector('.hero__shadow');
   const headline = document.querySelector('.hero__headline');
   const scrollHint = document.querySelector('.hero__scroll-hint');
   const menuBtn = document.querySelector('.hero__menu-btn');
@@ -44,7 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     { opacity: 0, scale: 1.0, xPercent: -50, yPercent: -50 }
   );
   gsap.set(stack, { opacity: 1, x: '0%', y: '0%', scale: 1 });
-  gsap.set(ovenGlow, { opacity: 0.5, filter: 'blur(7px) brightness(0.6)' });
+  gsap.set(ovenGlow, { opacity: 0.5 });
+  gsap.set(glowSharp, { opacity: 0 });
+  gsap.set(shadow, { opacity: 0 });
   gsap.set(menuBtn, { opacity: 0, scale: 0.85, pointerEvents: 'none' });
 
   // Stages (timeline time -> name). Drives the mobile progress bar label and
@@ -86,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       trigger: '.hero',
       start: 'top top',
       end: '+=420%',
-      scrub: 1,
+      scrub: 0.6, // shorter catch-up: the scene follows the finger more tightly
       pin: '.hero__pin-wrap',
       anticipatePin: 1,
       onLeaveBack: () => {
@@ -119,14 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
       1.8
     )
 
+    // Contact shadow appears with the flat disc
+    .to(shadow, { opacity: 1, duration: 0.65 }, 1.8)
+
     // 3-6) Toppings: see spread() below
 
-    // 7) Oven ignites, pizza slides toward it and shrinks (entry)
-    .to(ovenGlow, {
-      opacity: 1,
-      filter: 'blur(0px) brightness(1)',
-      duration: 0.9
-    }, 6.8)
+    // 7) Oven ignites, pizza slides toward it and shrinks (entry).
+    // Opacity-only crossfade to the sharp glow copy (no filter tweening).
+    .to(ovenGlow, { opacity: 1, duration: 0.9 }, 6.8)
+    .to(glowSharp, { opacity: 1, duration: 0.9 }, 6.8)
     .to(stack, {
       x: '20%',
       y: '-26%',
@@ -152,11 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
       { x: '0%',  y: '0%',   scale: 1,    opacity: 1, duration: 1.2, ease: 'power2.out', immediateRender: false },
       8.9
     )
-    .to(ovenGlow, {
-      opacity: 0.5,
-      filter: 'blur(3px) brightness(0.8)',
-      duration: 0.8
-    }, 9.5)
+    .to(ovenGlow, { opacity: 0.6, duration: 0.8 }, 9.5)
+    .to(glowSharp, { opacity: 0.55, duration: 0.8 }, 9.5)
 
     // Steam activation & CTA Menu Button reveal (after pizza is fully on the board)
     .to(hero, {
