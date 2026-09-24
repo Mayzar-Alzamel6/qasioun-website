@@ -935,11 +935,21 @@ html.intro-on { overflow: hidden; }
   background: linear-gradient(0deg, rgba(20, 13, 9, 0.72) 0%, rgba(20, 13, 9, 0.2) 45%, transparent 70%);
 }
 
+/* Per-category particle moment (js/cat-fx.js) */
+.menu__fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .menu__banner h3 {
   position: absolute;
   right: 1.25rem;
   bottom: 1rem;
-  z-index: 1;
+  z-index: 2;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(1.7rem, 5.5vw, 2.4rem);

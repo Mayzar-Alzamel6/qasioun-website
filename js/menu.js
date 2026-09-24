@@ -170,7 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bring the start of the (now filtered) list up under the sticky chips
     const offset = 64 + chips.offsetHeight + 8;
     const y = list.getBoundingClientRect().top + window.scrollY - offset;
-    if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
+    const far = Math.abs(window.scrollY - y) > 4;
+    if (far) window.scrollTo({ top: y, behavior: 'smooth' });
+    // The category's own moment (js/cat-fx.js), once the banner is in view
+    if (window.catFx && filter !== 'all') {
+      const banner = list.querySelector(`#cat-${filter} .menu__banner`);
+      setTimeout(() => window.catFx.play(banner, filter), far ? 380 : 60);
+    }
   });
 
   search.addEventListener('input', () => { applyView(); refreshScroll(); });
