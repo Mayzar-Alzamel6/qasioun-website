@@ -1,20 +1,22 @@
 /**
- * QR menu: renders window.MENU into #menu, with sticky category chips
- * (auto-highlighted on scroll), a live search filter, and a table-order
- * cart that is sent to the restaurant over WhatsApp (number, currency and
- * brand come from window.SITE in js/site-config.js).
+ * QR menu: renders window.MENU into #menu, with sticky category chips,
+ * a live search filter, an item sheet (js/item-sheet.js) with sizes,
+ * options, extras and a note, and a table-order cart that is sent to the
+ * restaurant over WhatsApp (number, currency and brand come from
+ * window.SITE in js/site-config.js).
  *
  * Table number: each table's QR code links to ?t=<number>#menu.
  */
 document.addEventListener('DOMContentLoaded', () => {
   const SITE = window.SITE || {};
+  const T = window.i18n;
+  const icon = window.icon || (() => '');
   const WHATSAPP = SITE.whatsapp || '';
   const CURRENCY = SITE.currency || '';
-  const CART_KEY = 'menu-cart';
+  const CART_KEY = 'menu-cart-v2';
   const TABLE_KEY = 'menu-table';
   const CART_TTL = 3 * 60 * 60 * 1000; // forget an abandoned cart after 3 hours
 
-  const data = window.MENU || [];
   const chips = document.querySelector('.menu__chips');
   const list = document.querySelector('.menu__list');
   const search = document.querySelector('.menu__search input');
@@ -25,57 +27,112 @@ document.addEventListener('DOMContentLoaded', () => {
   // floating-point drift.
   const fils = (p) => Math.round(parseFloat(p) * 100);
   const money = (f) => (f / 100).toFixed(2);
-  const items = new Map(); // key -> { name, size, price }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const norm = (s) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
+  const L = (ar, en) => T.pick(ar, en);
+
+  // Item tags -> icon (labels come from js/i18n.js: tag_<id>)
+  const TAGS = { popular: 'star', new: 'spark', spicy: 'chili', veg: 'leaf' };
+
+  /* ---------------------------------------------------------------------
+     Data: window.MENU (see js/menu-data.js) -> normalized categories/items
+     Item keys are "<category id>:<name>" so a saved cart survives rows
+     being reordered in the menu sheet.
+     --------------------------------------------------------------------- */
+  const photoPaths = (p) => {
+    if (!p) return null;
+    if (p.includes('/')) return { src: p, thumb: p }; // a path or full URL
+    return { src: `assets/img/items/${p}.webp`, thumb: `assets/img/items/${p}-sm.webp` };
+  };
+
+  const normalize = (menu) => menu.map((c) => {
+    const cat = {
+      id: c.id, title: c.title, en: c.en || '', img: c.img || '', icon: c.icon || 'dish',
+      note: c.note || '', noteEn: c.noteEn || '', items: []
+    };
+    const cols = Array.isArray(c.cols) ? c.cols : null;
+    cat.items = (c.items || []).map((raw) => {
+      const o = Array.isArray(raw) ? { name: raw[0], price: raw[1] } : raw;
+      const prices = Array.isArray(o.price) ? o.price : [o.price];
+      const sizes = prices.map((p, j) => (p == null || p === '' ? null : {
+        label: cols ? cols[j] : '',
+        labelEn: cols && c.colsEn ? c.colsEn[j] || '' : '',
+        orderLabel: cols ? (c.sizePrefix || '') + cols[j] : '',
+        price: fils(p)
+      })).filter((s) => s && !Number.isNaN(s.price));
+      const addons = o.addons === false ? [] : (o.addons || c.addons || []);
+      const choices = o.choices === false ? [] : (o.choices || c.choices || []);
+      return {
+        key: `${c.id}:${o.name}`,
+        cat,
+        name: o.name, en: o.en || '', desc: o.desc || '', descEn: o.descEn || '',
+        orderName: (c.orderPrefix || '') + o.name,
+        sizes,
+        addons: addons.map(([name, en, p]) => ({ name, en: en || '', price: fils(p) })),
+        choices: choices.map((g) => ({ title: g.title, en: g.en || '', options: g.options.map(([ar, en]) => ({ ar, en: en || '' })) })),
+        photo: photoPaths(o.photo),
+        tags: (o.tags || []).filter((t) => TAGS[t]).map((t) => ({ id: t, icon: TAGS[t] })),
+        featured: !!o.featured, suggest: !!o.suggest, soldOut: !!o.soldOut,
+        search: norm([o.name, o.en, o.desc, o.descEn, c.title, c.en].filter(Boolean).join(' '))
+      };
+    }).filter((it) => it.sizes.length);
+    return cat;
+  });
+
+  let cats = [];
+  let source = [];
+  const items = new Map(); // key -> item
+  const setModel = (menu) => {
+    source = menu;
+    cats = normalize(menu);
+    items.clear();
+    cats.forEach((c) => c.items.forEach((it) => items.set(it.key, it)));
+  };
 
   /* ---------------------------------------------------------------------
      Render
      --------------------------------------------------------------------- */
-  chips.innerHTML = [{ id: 'all', title: 'الكل' }, ...data].map((c) =>
-    `<button type="button" class="menu__chip" data-filter="${c.id}" aria-pressed="false">${c.title}</button>`
-  ).join('');
+  const tagsHtml = (it) => {
+    const tags = it.tags.map((t) => `<span class="tag tag--${t.id}">${icon(t.icon)}${T.t('tag_' + t.id)}</span>`);
+    if (it.soldOut) tags.unshift(`<span class="tag tag--out">${T.t('soldOut')}</span>`);
+    return tags.length ? `<div class="tags">${tags.join('')}</div>` : '';
+  };
 
-  list.innerHTML = data.map((c) => {
-    const multi = Array.isArray(c.cols);
-    const head = multi
-      ? `<p class="menu__hint">اضغط على السعر لإضافته لطلبك</p>
-         <div class="menu__cols" style="--n:${c.cols.length}"><span></span>${c.cols.map((h) => `<span>${h}</span>`).join('')}</div>`
-      : '';
+  const priceHtml = (it) => {
+    const min = Math.min(...it.sizes.map((s) => s.price));
+    return `<p class="menu__price">${it.sizes.length > 1 ? `<small>${T.t('from')}</small> ` : ''}<bdi>${money(min)}</bdi></p>`;
+  };
 
-    const rows = c.items.map(([name, p], i) => {
-      if (!multi) {
-        const key = `${c.id}.${i}`;
-        items.set(key, { name, size: '', price: fils(p) });
-        return `<li class="menu__item">
-          <span class="menu__name">${name}</span><span class="menu__dots"></span>
-          <span class="menu__price"><bdi>${p}</bdi></span>
-          <span class="menu__qty" data-qty="${key}"></span>
-        </li>`;
-      }
-      const cells = p.map((v, j) => {
-        if (!v) return '<span class="menu__price menu__na">—</span>';
-        const key = `${c.id}.${i}.${j}`;
-        const size = (c.sizePrefix || '') + c.cols[j];
-        items.set(key, { name: (c.orderPrefix || '') + name, size, price: fils(v) });
-        return `<button type="button" class="menu__price menu__pick" data-add="${key}" data-pick="${key}" aria-label="أضف ${name} — ${size}">
-          <bdi>${v}</bdi><span class="menu__badge" data-badge="${key}" hidden></span>
-        </button>`;
-      }).join('');
-      return `<li class="menu__item menu__item--multi" style="--n:${c.cols.length}"><span class="menu__name">${name}</span>${cells}</li>`;
-    }).join('');
+  // Photo slot: the category icon sits behind the image, so a photo that
+  // hasn't been added yet (or fails to load) leaves a tidy placeholder.
+  const thumbHtml = (it) => `<div class="menu__thumb">
+      ${icon(it.cat.icon, 'menu__ph')}
+      <img src="${esc(it.photo.thumb)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('is-empty')">
+    </div>`;
 
-    return `
-      <section class="menu__cat" id="cat-${c.id}" data-id="${c.id}">
-        <div class="menu__banner${c.img ? '' : ' menu__banner--icon'}">
-          ${c.img
-            ? `<img src="${c.img}" alt="" loading="lazy" decoding="async">`
-            : (window.icon ? window.icon(c.icon, 'menu__icon') : '')}
-          <h3>${c.title}</h3>
-        </div>
-        ${head}
-        <ul>${rows}</ul>
-        ${c.note ? `<p class="menu__note">${c.note}</p>` : ''}
-      </section>`;
-  }).join('');
+  const rowHtml = (it) => `
+    <li class="menu__item${it.photo ? ' has-photo' : ''}${it.soldOut ? ' is-soldout' : ''}" data-key="${esc(it.key)}">
+      <div class="menu__text">
+        <h4 class="menu__name"><button type="button" class="menu__open" data-open="${esc(it.key)}">${esc(L(it.name, it.en))}</button></h4>
+        ${it.desc ? `<p class="menu__desc">${esc(L(it.desc, it.descEn))}</p>` : ''}
+        ${tagsHtml(it)}
+        ${priceHtml(it)}
+      </div>
+      <div class="menu__media">
+        ${it.photo ? thumbHtml(it) : ''}
+        <span class="menu__qty" data-qty="${esc(it.key)}"></span>
+      </div>
+    </li>`;
+
+  const catHtml = (c) => `
+    <section class="menu__cat" id="cat-${c.id}" data-id="${c.id}">
+      <div class="menu__banner${c.img ? '' : ' menu__banner--icon'}">
+        ${c.img ? `<img src="${esc(c.img)}" alt="" loading="lazy" decoding="async">` : icon(c.icon, 'menu__icon')}
+        <h3>${esc(L(c.title, c.en))}</h3>
+      </div>
+      <ul>${c.items.map(rowHtml).join('')}</ul>
+      ${c.note ? `<p class="menu__note">${esc(L(c.note, c.noteEn))}</p>` : ''}
+    </section>`;
 
   /* ---------------------------------------------------------------------
      Category filter + live search
@@ -83,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
      A search query always looks across the whole menu; clearing it
      brings the selected category back.
      --------------------------------------------------------------------- */
-  const norm = (s) => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
   let filter = 'all';
 
   const applyView = () => {
@@ -91,10 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let any = false;
     list.querySelectorAll('.menu__cat').forEach((cat) => {
       const inScope = q || filter === 'all' || cat.dataset.id === filter;
-      const title = norm(cat.querySelector('h3').textContent);
       let shown = 0;
       cat.querySelectorAll('.menu__item').forEach((li) => {
-        const hit = inScope && (!q || title.includes(q) || norm(li.querySelector('.menu__name').textContent).includes(q));
+        const it = items.get(li.dataset.key);
+        const hit = inScope && (!q || (it && it.search.includes(q)));
         li.hidden = !hit;
         if (hit) shown++;
       });
@@ -113,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const indicator = document.createElement('span');
   indicator.className = 'menu__chips-indicator';
   indicator.setAttribute('aria-hidden', 'true');
-  chips.prepend(indicator);
 
   const moveIndicator = (chip, animate) => {
     const vars = { x: chip.offsetLeft, width: chip.offsetWidth, height: chip.offsetHeight, y: chip.offsetTop };
@@ -159,6 +214,36 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshTimer = setTimeout(() => ScrollTrigger.refresh(), 150);
   };
 
+  // Parallax on banner photos only (icon banners stay still)
+  let parallax = [];
+  const setupParallax = () => {
+    parallax.forEach((tw) => { if (tw.scrollTrigger) tw.scrollTrigger.kill(); tw.kill(); });
+    parallax = [];
+    if (!motion || !window.ScrollTrigger) return;
+    list.querySelectorAll('.menu__banner img').forEach((img) => {
+      parallax.push(gsap.fromTo(img, { yPercent: -8, scale: 1.18 }, {
+        yPercent: 8, scale: 1.18, ease: 'none',
+        scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true }
+      }));
+    });
+  };
+
+  // (Re)draws chips + list from the current model; safe to call again after a
+  // language switch or a menu refresh.
+  const render = () => {
+    if (filter !== 'all' && !cats.some((c) => c.id === filter)) filter = 'all';
+    chips.innerHTML = [{ id: 'all', title: T.t('all') }, ...cats.map((c) => ({ id: c.id, title: L(c.title, c.en) }))].map((c) =>
+      `<button type="button" class="menu__chip" data-filter="${c.id}" aria-pressed="false">${esc(c.title)}</button>`
+    ).join('');
+    chips.prepend(indicator);
+    list.innerHTML = cats.map(catHtml).join('');
+    items.forEach((_, key) => paintItem(key));
+    applyView();
+    setActive(filter, false);
+    setupParallax();
+    refreshScroll();
+  };
+
   chips.addEventListener('click', (e) => {
     const chip = e.target.closest('.menu__chip');
     if (!chip || chip.dataset.filter === filter) return;
@@ -180,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   search.addEventListener('input', () => { applyView(); refreshScroll(); });
-  setActive(filter, false);
   // Fonts change chip widths after first paint
   if (document.fonts) document.fonts.ready.then(() => setActive(filter, false));
   window.addEventListener('resize', () => {
@@ -188,17 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (active) moveIndicator(active, false);
   });
 
-  // Parallax on banner photos only (icon banners stay still)
-  if (motion && window.ScrollTrigger) {
-    list.querySelectorAll('.menu__banner img').forEach((img) => {
-      gsap.fromTo(img, { yPercent: -8, scale: 1.18 }, {
-        yPercent: 8, scale: 1.18, ease: 'none',
-        scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true }
-      });
-    });
-  }
-
-  // The WhatsApp button sits over the price column (left side in RTL):
+  // The WhatsApp button sits over the "+" column (left side in RTL):
   // hide it while the menu list is on screen.
   const fab = document.querySelector('.wa-fab');
   if (fab) {
@@ -227,51 +301,101 @@ document.addEventListener('DOMContentLoaded', () => {
   showTable();
 
   /* ---------------------------------------------------------------------
-     Cart state (persisted per device, expires after CART_TTL)
+     Cart: lines of { k: item key, s: size, a: [extras], c: [option per
+     choice group], note, n: quantity }. The same item with different
+     options is a separate line. Persisted per device, expires after CART_TTL.
      --------------------------------------------------------------------- */
-  let cart = {};
-  try {
-    const saved = JSON.parse(localStorage.getItem(CART_KEY) || 'null');
-    if (saved && Date.now() - saved.at < CART_TTL) {
-      Object.entries(saved.lines || {}).forEach(([k, n]) => {
-        if (items.has(k) && Number.isInteger(n) && n > 0) cart[k] = Math.min(n, 99);
-      });
-    }
-  } catch (e) { cart = {}; }
+  let cart = {}; // line id -> line
+
+  const lineId = (l) => `${l.k}|${l.s}|${l.a.join('.')}|${l.c.join('.')}|${l.note}`;
+  const plainLine = (it) => ({ k: it.key, s: 0, a: [], c: it.choices.map(() => 0), note: '' });
+  const quickAdd = (it) => it.sizes.length === 1; // no size to choose: "+" adds straight away
+
+  const isIdx = (v, len) => Number.isInteger(v) && v >= 0 && v < len;
+  const validLine = (l) => {
+    const it = l && items.get(l.k);
+    return !!it && !it.soldOut && isIdx(l.s, it.sizes.length)
+      && Array.isArray(l.a) && l.a.every((i) => isIdx(i, it.addons.length))
+      && Array.isArray(l.c) && l.c.length === it.choices.length && l.c.every((o, gi) => isIdx(o, it.choices[gi].options.length))
+      && typeof l.note === 'string' && Number.isInteger(l.n) && l.n > 0;
+  };
+
+  const unitPrice = (l) => {
+    const it = items.get(l.k);
+    return it.sizes[l.s].price + l.a.reduce((sum, i) => sum + it.addons[i].price, 0);
+  };
 
   const save = () => {
     try { localStorage.setItem(CART_KEY, JSON.stringify({ at: Date.now(), lines: cart })); } catch (e) { /* ignore */ }
   };
 
-  const totals = () => Object.entries(cart).reduce((t, [k, n]) => {
-    t.count += n;
-    t.sum += items.get(k).price * n;
+  const restoreCart = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CART_KEY) || 'null');
+      if (!saved || Date.now() - saved.at > CART_TTL) return;
+      Object.values(saved.lines || {}).forEach((l) => {
+        if (!validLine(l)) return;
+        const line = { k: l.k, s: l.s, a: [...new Set(l.a)].sort((x, y) => x - y), c: l.c, note: l.note.slice(0, 120), n: Math.min(l.n, 99) };
+        cart[lineId(line)] = line;
+      });
+    } catch (e) { cart = {}; }
+  };
+
+  // After the menu changes (language, refreshed data): drop lines whose item
+  // is gone or sold out. Returns true when something was removed.
+  const pruneCart = () => {
+    let removed = false;
+    Object.entries(cart).forEach(([id, l]) => {
+      if (!validLine(l)) { delete cart[id]; removed = true; }
+    });
+    if (removed) save();
+    return removed;
+  };
+
+  const totals = () => Object.values(cart).reduce((t, l) => {
+    t.count += l.n;
+    t.sum += unitPrice(l) * l.n;
     return t;
   }, { count: 0, sum: 0 });
 
-  const stepper = (key, n) =>
+  const stepper = (id, n) =>
     `<span class="stepper">
-      <button type="button" data-add="${key}" aria-label="زيادة">+</button>
+      <button type="button" data-inc="${esc(id)}" aria-label="${T.t('inc')}">+</button>
       <output aria-live="polite">${n}</output>
-      <button type="button" data-sub="${key}" aria-label="إنقاص">−</button>
+      <button type="button" data-dec="${esc(id)}" aria-label="${T.t('dec')}">−</button>
     </span>`;
 
-  // Update the in-menu control(s) for one item key
+  // Update the in-menu control(s) for one item: a stepper for its plain
+  // line, else a "+" that shows how many are in the order.
   const paintItem = (key) => {
-    const n = cart[key] || 0;
-    const qty = list.querySelector(`[data-qty="${key}"]`);
-    if (qty) {
-      qty.innerHTML = n
-        ? stepper(key, n)
-        : `<button type="button" class="menu__add" data-add="${key}" aria-label="أضف ${items.get(key).name}">+</button>`;
+    const it = items.get(key);
+    if (!it) return;
+    let markup = '';
+    if (!it.soldOut) {
+      const plain = lineId(plainLine(it));
+      const plainN = cart[plain] ? cart[plain].n : 0;
+      const total = Object.values(cart).reduce((sum, l) => sum + (l.k === key ? l.n : 0), 0);
+      const name = L(it.name, it.en);
+      markup = quickAdd(it) && plainN
+        ? stepper(plain, plainN)
+        : `<button type="button" class="menu__add" data-quick="${esc(key)}" aria-label="${esc(T.t('add', { name }))}${total ? ` — ${T.t('inOrder', { n: total })}` : ''}">+${total ? `<span class="menu__count" aria-hidden="true">${total}</span>` : ''}</button>`;
     }
-    const pick = list.querySelector(`[data-pick="${key}"]`);
-    if (pick) {
-      pick.classList.toggle('is-on', n > 0);
-      const badge = pick.querySelector('.menu__badge');
-      badge.hidden = !n;
-      badge.textContent = n;
-    }
+    document.querySelectorAll(`[data-qty="${CSS.escape(key)}"]`).forEach((el) => { el.innerHTML = markup; });
+  };
+
+  // Size / extras / options / note of a line, in the menu language (sheet)
+  // or always in Arabic (WhatsApp order for the staff).
+  const lineParts = (l, ar) => {
+    const it = items.get(l.k);
+    const pick = ar ? (a) => a : L;
+    const size = it.sizes[l.s];
+    return {
+      name: ar ? it.orderName : L(it.name, it.en),
+      size: ar ? size.orderLabel : L(size.label, size.labelEn),
+      extras: l.a.map((i) => pick(it.addons[i].name, it.addons[i].en)),
+      options: it.choices.map((g, gi) => `${pick(g.title, g.en)}: ${pick(g.options[l.c[gi]].ar, g.options[l.c[gi]].en)}`),
+      note: l.note
+    };
   };
 
   /* ---------------------------------------------------------------------
@@ -305,26 +429,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     sheet.querySelector('.cart__sum').textContent = `${money(sum)} ${CURRENCY}`;
 
-    lines.innerHTML = Object.entries(cart).map(([k, n]) => {
-      const it = items.get(k);
+    lines.innerHTML = Object.entries(cart).map(([id, l]) => {
+      const p = lineParts(l, false);
+      const sub = [p.size, p.extras.length ? `+ ${p.extras.join('، ')}` : '', ...p.options].filter(Boolean);
       return `<li class="cart__line">
-        <div class="cart__info"><strong>${it.name}</strong>${it.size ? `<small>${it.size}</small>` : ''}</div>
-        ${stepper(k, n)}
-        <span class="cart__price"><bdi>${money(it.price * n)}</bdi></span>
+        <div class="cart__info">
+          <strong>${esc(p.name)}</strong>
+          ${sub.length ? `<small>${esc(sub.join(' · '))}</small>` : ''}
+          ${p.note ? `<small class="cart__line-note">«${esc(p.note)}»</small>` : ''}
+        </div>
+        ${stepper(id, l.n)}
+        <span class="cart__price"><bdi>${money(unitPrice(l) * l.n)}</bdi></span>
       </li>`;
-    }).join('') || '<li class="cart__empty">طلبك فاضي — أضف أصناف من المنيو</li>';
+    }).join('') || `<li class="cart__empty">${T.t('cartEmpty')}</li>`;
   };
 
-  const change = (key, delta) => {
-    if (!items.has(key)) return;
-    const n = Math.max(0, Math.min(99, (cart[key] || 0) + delta));
-    if (n) cart[key] = n; else delete cart[key];
+  const addLine = (l) => {
+    const line = { k: l.k, s: l.s, a: [...l.a].sort((x, y) => x - y), c: l.c, note: l.note || '', n: 0 };
+    const id = lineId(line);
+    const cur = cart[id] || line;
+    cur.n = Math.min(99, cur.n + (l.n || 1));
+    cart[id] = cur;
     save();
-    paintItem(key);
+    paintItem(line.k);
+    paintCart();
+  };
+
+  const change = (id, delta) => {
+    const l = cart[id];
+    if (!l) return;
+    l.n = Math.max(0, Math.min(99, l.n + delta));
+    if (!l.n) delete cart[id];
+    save();
+    paintItem(l.k);
     paintCart();
     // Quantity pops in the menu row and in the sheet
-    if (motion && n) {
-      document.querySelectorAll(`[data-sub="${key}"]`).forEach((b) => {
+    if (motion && l.n) {
+      document.querySelectorAll(`[data-dec="${CSS.escape(id)}"]`).forEach((b) => {
         const out = b.parentElement.querySelector('output');
         if (out) gsap.fromTo(out, { scale: 1.4 }, { scale: 1, duration: 0.3, ease: 'back.out(3)' });
       });
@@ -337,9 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navigator.vibrate) navigator.vibrate(12);
   };
 
-  // A gold dot flies in an arc from the tapped "+" / price to the cart count
-  // `from` is the tapped control's rect, measured before change() re-renders it
-  const flyToCart = (from, barWasHidden) => {
+  // A dot flies in an arc from the tapped control to the cart count.
+  // `from` is the control's rect, measured before it was re-rendered.
+  const flyToCart = (from, delay = 0) => {
     if (!motion) { bump(); return; }
     const launch = () => {
       const to = countEl.getBoundingClientRect();
@@ -356,21 +497,52 @@ document.addEventListener('DOMContentLoaded', () => {
         onComplete: () => { dot.remove(); bump(); }
       });
     };
-    // Let the bar finish sliding in (CSS barIn, 0.25s) before aiming at it
-    if (barWasHidden) setTimeout(launch, 260); else launch();
+    if (delay) setTimeout(launch, delay); else launch();
+  };
+
+  // The bar slides in (CSS barIn, 0.25s) the first time: aim after it lands
+  const barDelay = (wasHidden) => (wasHidden ? 260 : 0);
+
+  const openItem = (it, fromEl) => {
+    const row = fromEl.closest('.menu__item');
+    const origin = row && row.querySelector('.menu__thumb img');
+    window.itemSheet.open(it, {
+      origin,
+      money,
+      currency: CURRENCY,
+      onAdd: (l, rect) => {
+        addLine({ k: it.key, ...l });
+        // The sheet slides away first (0.3s)
+        flyToCart(rect, motion ? 300 : 0);
+      }
+    });
   };
 
   document.addEventListener('click', (e) => {
-    const add = e.target.closest('[data-add]');
-    const sub = e.target.closest('[data-sub]');
-    if (add) {
-      // Measure before change(): it replaces the tapped button's markup
-      const fromMenu = list.contains(add);
-      const from = add.getBoundingClientRect();
-      const barWasHidden = bar.hidden;
-      change(add.dataset.add, +1);
-      if (fromMenu) flyToCart(from, barWasHidden);
-    } else if (sub) change(sub.dataset.sub, -1);
+    const quick = e.target.closest('[data-quick]');
+    const inc = e.target.closest('[data-inc]');
+    const dec = e.target.closest('[data-dec]');
+    const open = e.target.closest('[data-open]');
+    if (quick) {
+      const it = items.get(quick.dataset.quick);
+      if (!it || it.soldOut) return;
+      if (!quickAdd(it)) { openItem(it, quick); return; }
+      // Measure before addLine(): it replaces the tapped button's markup
+      const from = quick.getBoundingClientRect();
+      const wasHidden = bar.hidden;
+      addLine({ ...plainLine(it), n: 1 });
+      flyToCart(from, barDelay(wasHidden));
+    } else if (inc) {
+      const from = inc.getBoundingClientRect();
+      const wasHidden = bar.hidden;
+      change(inc.dataset.inc, +1);
+      if (list.contains(inc)) flyToCart(from, barDelay(wasHidden));
+    } else if (dec) {
+      change(dec.dataset.dec, -1);
+    } else if (open) {
+      const it = items.get(open.dataset.open);
+      if (it) openItem(it, open);
+    }
   });
 
   // After WhatsApp opens: an honest "ready" state (we can't know it was sent)
@@ -391,10 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showDone(false);
     paintCart();
     sheet.showModal();
-    document.documentElement.classList.add('cart-open');
+    document.documentElement.classList.add('sheet-open');
   };
   bar.querySelector('button').addEventListener('click', openSheet);
-  sheet.addEventListener('close', () => document.documentElement.classList.remove('cart-open'));
+  sheet.addEventListener('close', () => document.documentElement.classList.remove('sheet-open'));
   sheet.querySelector('.cart__close').addEventListener('click', () => sheet.close());
   sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); }); // backdrop tap
 
@@ -406,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   sheet.querySelector('.cart__clear').addEventListener('click', () => {
-    const keys = Object.keys(cart);
+    const keys = new Set(Object.values(cart).map((l) => l.k));
     cart = {};
     save();
     keys.forEach(paintItem);
@@ -418,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { count, sum } = totals();
     if (!count) return;
     if (!WHATSAPP) {
-      alert('رقم واتساب المطعم غير مُعدّ بعد (site-config.js).');
+      alert(T.t('noWhatsapp'));
       return;
     }
     if (!table) {
@@ -426,9 +598,15 @@ document.addEventListener('DOMContentLoaded', () => {
       tableInput.focus();
       return;
     }
-    const rows = Object.entries(cart).map(([k, n]) => {
-      const it = items.get(k);
-      return `• ${n} × ${it.name}${it.size ? ` (${it.size})` : ''} — ${money(it.price * n)}`;
+    // Always in Arabic: the message is read by the staff
+    const rows = Object.values(cart).flatMap((l) => {
+      const p = lineParts(l, true);
+      return [
+        `• ${l.n} × ${p.name}${p.size ? ` (${p.size})` : ''} — ${money(unitPrice(l) * l.n)}`,
+        p.extras.length ? `   + ${p.extras.join('، ')}` : null,
+        ...p.options.map((o) => `   ${o}`),
+        p.note ? `   ملاحظة: ${p.note}` : null
+      ].filter(Boolean);
     });
     const note = notes.value.trim();
     const text = [
@@ -444,7 +622,22 @@ document.addEventListener('DOMContentLoaded', () => {
     showDone(true);
   });
 
-  // Initial paint (restored cart)
-  items.forEach((_, key) => paintItem(key));
+  /* ---------------------------------------------------------------------
+     Start
+     --------------------------------------------------------------------- */
+  setModel(window.MENU || []);
+  restoreCart();
+  render();
   paintCart();
+
+  // Re-render with new menu data or after a language switch (keeps the cart)
+  window.menuApp = {
+    rebuild(menu) {
+      setModel(menu || source);
+      const removed = pruneCart();
+      render();
+      paintCart();
+      return removed;
+    }
+  };
 });

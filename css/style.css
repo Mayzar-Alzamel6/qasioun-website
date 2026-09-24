@@ -969,66 +969,160 @@ html.intro-on { overflow: hidden; }
 }
 
 .menu__item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: 64px;
-  padding: 0.6rem 0;
+  gap: 0.9rem;
+  min-height: 76px;
+  padding: 0.95rem 0;
   border-bottom: 1px solid var(--line);
-  font-size: 1.02rem;
 }
 
 .menu__item:last-child { border-bottom: 0; }
+.menu__item.has-photo { padding-bottom: 1.4rem; }
 
-.menu__name { font-weight: 600; }
+.menu__text {
+  flex: 1;
+  min-width: 0;
+}
 
-.menu__dots { flex: 1; }
+.menu__name {
+  font-size: 1.04rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* The name is the row's button: its ::after covers the whole row, so a tap
+   anywhere opens the item sheet ("+" sits above it). */
+.menu__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.menu__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 14px;
+}
+
+.menu__open:focus-visible { outline: none; }
+.menu__open:focus-visible::after { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.menu__desc {
+  display: -webkit-box;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
 .menu__price {
-  font-weight: 700;
-  color: var(--ink);
-  white-space: nowrap;
+  margin-top: 0.4rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
-/* Desktop: single-price lists become two columns inside the card */
+.menu__price small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Tags: popular / new / spicy / vegetarian / sold out */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 23px;
+  padding: 0 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
+
+.tag--popular { background: var(--accent-soft); color: var(--accent-dark); }
+.tag--new { background: var(--ink); color: #fff; }
+.tag--spicy { background: #FFE9DB; color: #A83C0C; }
+.tag--veg { background: #E6F2E1; color: #2E6A28; }
+.tag--out { background: var(--line); color: var(--ink); }
+
+.menu__item.is-soldout .menu__name,
+.menu__item.is-soldout .menu__desc,
+.menu__item.is-soldout .menu__price,
+.menu__item.is-soldout .menu__thumb { opacity: 0.5; }
+
+/* Photo slot. The category icon sits behind the image: until the photo is
+   added (or if it fails to load) the slot shows a tidy placeholder. */
+.menu__media {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.menu__thumb {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--bg-2);
+  color: var(--muted);
+}
+
+.menu__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu__thumb.is-empty img { display: none; }
+
+.menu__ph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  opacity: 0.45;
+}
+
+/* Desktop: two columns of items inside each category card */
 @media (min-width: 900px) {
-  .menu__cat ul:not(:has(.menu__item--multi)) {
+  .menu__cat ul {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    column-gap: 3rem;
+    column-gap: 2.5rem;
     padding: 0.25rem 1.75rem;
   }
 
-  .menu__cat ul:not(:has(.menu__item--multi)) .menu__item:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
-}
-
-/* Multi-size tables (pizza, sandwiches, juices) */
-.menu__cols,
-.menu__item--multi {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(var(--n), minmax(58px, auto));
-  column-gap: 0.5rem;
-  align-items: center;
-}
-
-.menu__cols {
-  padding: 0 1.1rem 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-align: center;
-}
-
-.menu__item--multi .menu__price { text-align: center; font-size: 0.95rem; }
-
-.menu__na { color: var(--muted); font-weight: 400; }
-
-.menu__hint {
-  margin-bottom: 0.6rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-align: center;
+  .menu__cat ul .menu__item:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
 }
 
 .menu__note {
@@ -1051,10 +1145,19 @@ html.intro-on { overflow: hidden; }
    Ordering controls inside the menu
    -------------------------------------------------------------------------- */
 .menu__qty {
-  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   display: inline-flex;
   justify-content: center;
   min-width: 44px;
+}
+
+/* On a photo: centered on its bottom edge */
+.has-photo .menu__qty {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
 }
 
 .menu__add {
@@ -1084,6 +1187,25 @@ html.intro-on { overflow: hidden; }
 .menu__add:hover { background: var(--accent-dark); }
 .menu__add:active { transform: scale(0.9); }
 
+.has-photo .menu__add,
+.has-photo .stepper { box-shadow: 0 0 0 3px var(--surface), 0 6px 14px rgba(31, 22, 17, 0.18); }
+
+/* How many of this item are in the order (items with sizes/options) */
+.menu__count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 20px;
+}
+
 .stepper {
   display: inline-flex;
   align-items: center;
@@ -1112,45 +1234,8 @@ html.intro-on { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 
-.menu__pick {
-  position: relative;
-  min-height: 44px;
-  padding: 0.3rem 0.2rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.menu__pick:hover { border-color: var(--accent); }
-
-.menu__pick.is-on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.menu__badge {
-  position: absolute;
-  top: -8px;
-  left: -6px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 0.72rem;
-  line-height: 20px;
-}
-
 /* Press feedback */
-.stepper button:active,
-.menu__pick:active { transform: scale(0.9); }
+.stepper button:active { transform: scale(0.9); }
 
 /* Dot that flies from "+" to the cart count */
 .fly-dot {
@@ -1225,7 +1310,7 @@ body.has-cart .wa-fab { display: none; }
   to { transform: none; opacity: 1; }
 }
 
-html.cart-open { overflow: hidden; }
+html.sheet-open { overflow: hidden; }
 
 .cart {
   width: 100%;
@@ -1449,6 +1534,337 @@ html.cart-open { overflow: hidden; }
   cursor: pointer;
 }
 
+.cart__line-note { display: block; font-style: italic; }
+
+/* --------------------------------------------------------------------------
+   Item sheet (js/item-sheet.js): photo, description, options, add to order
+   -------------------------------------------------------------------------- */
+.isheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 92dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 26px 26px 0 0;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.isheet[open] { animation: sheetUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.isheet.is-closing { animation: sheetDown 0.26s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.isheet::backdrop { background: rgba(31, 22, 17, 0.5); }
+
+@keyframes sheetDown { to { transform: translateY(100%); } }
+
+/* One scrolling column; the add bar sticks to the bottom */
+.isheet__inner {
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.isheet__photo {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 42dvh;
+  overflow: hidden;
+  background: var(--bg-2);
+  color: var(--muted);
+}
+
+.isheet__photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.isheet__photo.is-empty img { display: none; }
+
+/* The category photo standing in for an item without its own */
+.isheet__photo.is-cat::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(20, 13, 9, 0.3), transparent 55%);
+}
+
+.isheet__ph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  opacity: 0.4;
+}
+
+.isheet__close {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(31, 22, 17, 0.18);
+  cursor: pointer;
+}
+
+.isheet__close .icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.isheet__body { padding: 1.25rem 1.25rem 0.5rem; }
+
+.isheet__body h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.7rem;
+  line-height: 1.25;
+}
+
+.isheet__body h2:focus { outline: none; }
+
+.isheet__desc {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.isheet__group {
+  min-width: 0;
+  margin-top: 1.4rem;
+  padding: 0;
+  border: 0;
+}
+
+.isheet__group legend {
+  margin-bottom: 0.6rem;
+  padding: 0;
+  font-weight: 800;
+}
+
+.isheet__group legend small,
+.isheet__note small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* Size and extras: full-width rows with a custom radio / checkbox */
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  margin-bottom: 0.45rem;
+  padding: 0 0.9rem;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.opt:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.opt input {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid rgba(31, 22, 17, 0.3);
+  border-radius: 50%;
+  background: var(--surface);
+  appearance: none;
+  cursor: pointer;
+}
+
+.opt input:checked {
+  border-color: var(--accent);
+  background: radial-gradient(var(--accent) 42%, var(--surface) 47%);
+}
+
+.opt--check input { border-radius: 7px; }
+
+.opt--check input:checked {
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 15px no-repeat;
+}
+
+.opt input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.opt__name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.opt__price {
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.opt:has(input:checked) .opt__price { color: var(--accent-dark); }
+
+/* Pick-one options (sugar, flavor...) as pills */
+.isheet__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pill-opt { position: relative; }
+
+.pill-opt input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pill-opt span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pill-opt input:checked + span {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.pill-opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.isheet__note {
+  display: block;
+  margin-top: 1.4rem;
+  font-weight: 800;
+}
+
+.isheet__note textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  font-weight: 500;
+  resize: none;
+}
+
+.isheet__foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.85rem 1.25rem calc(0.85rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.isheet__add {
+  flex: 1;
+  justify-content: space-between;
+  height: 54px;
+  padding: 0 1.3rem;
+  font-size: 1.02rem;
+}
+
+.isheet__add:disabled {
+  justify-content: center;
+  background: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.isheet__total { font-variant-numeric: tabular-nums; }
+
+/* Photo morph between the row thumbnail and the sheet (View Transitions) */
+.vt-isheet .isheet {
+  view-transition-name: isheet-panel;
+  animation: none;
+}
+
+.vt-isheet .isheet__ph { visibility: hidden; }
+
+/* The panel only exists on one side of the transition, so by default it
+   would be layered above the flying photo */
+::view-transition-group(isheet-panel) { z-index: 1; }
+
+::view-transition-group(isheet-photo) {
+  z-index: 2;
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+::view-transition-old(isheet-photo),
+::view-transition-new(isheet-photo) {
+  height: 100%;
+  object-fit: cover;
+  overflow: clip;
+}
+
+::view-transition-new(isheet-panel):only-child { animation: vtSheetIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+::view-transition-old(isheet-panel):only-child { animation: vtSheetOut 0.3s cubic-bezier(0.4, 0, 1, 1) both; }
+
+@keyframes vtSheetIn { from { transform: translateY(100%); } }
+@keyframes vtSheetOut { to { transform: translateY(100%); } }
+
+/* Wide screens: the sheets become centered cards that pop in */
+@media (min-width: 768px) {
+  .cart,
+  .isheet {
+    margin: auto;
+    max-height: 88dvh;
+    border-radius: 26px;
+  }
+
+  .cart__inner,
+  .isheet__inner { max-height: 88dvh; }
+
+  .cart[open],
+  .isheet[open] { animation-name: sheetPop; }
+
+  .isheet.is-closing { animation-name: sheetPopOut; }
+
+  ::view-transition-new(isheet-panel):only-child { animation-name: sheetPop; }
+  ::view-transition-old(isheet-panel):only-child { animation-name: sheetPopOut; }
+}
+
+@keyframes sheetPop { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+@keyframes sheetPopOut { to { opacity: 0; transform: translateY(24px) scale(0.98); } }
+
 /* --------------------------------------------------------------------------
    Footer
    -------------------------------------------------------------------------- */
@@ -1630,6 +2046,8 @@ textarea:focus-visible {
   }
 
   .cart__check circle, .cart__check path { stroke-dashoffset: 0; animation: none !important; }
+
+  .cart[open], .isheet[open], .isheet.is-closing, .cartbar { animation: none !important; }
 }
 
 /* The CTA is centered with translate: keep it while pressed */
