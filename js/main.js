@@ -80,23 +80,19 @@ document.addEventListener('DOMContentLoaded', () => {
   gsap.set(shadow, { opacity: 0 });
   gsap.set(menuBtn, { opacity: 0, scale: 0.85, pointerEvents: 'none' });
 
-  // Stages (timeline time -> name). Drives the mobile progress bar label and
-  // the desktop step list (.hero__steps, built here from the same data).
+  // Stages (timeline time; names are stage0..stage7 in js/i18n.js). Drive the
+  // mobile progress bar label and the desktop step list (.hero__steps).
+  const T = window.i18n;
   const progressFill = document.querySelector('.hero__progress-fill');
   const progressLabel = document.querySelector('.hero__progress-label');
   const stepsList = document.querySelector('.hero__steps');
-  const stages = [
-    [0.5, 'العجينة'],
-    [1.8, 'فرد العجينة'],
-    [2.8, 'الصلصة'],
-    [3.8, 'الجبنة'],
-    [4.8, 'السلامي'],
-    [5.8, 'الزيتون'],
-    [6.8, 'إلى الفرن'],
-    [8.9, 'جاهزة']
-  ];
-  stepsList.innerHTML = stages.map(([, name]) => `<li>${name}</li>`).join('');
-  const stepItems = [...stepsList.children];
+  const stages = [0.5, 1.8, 2.8, 3.8, 4.8, 5.8, 6.8, 8.9];
+  let stepItems = [];
+  const paintSteps = () => {
+    stepsList.innerHTML = stages.map((_, i) => `<li>${T.t('stage' + i)}</li>`).join('');
+    stepItems = [...stepsList.children];
+  };
+  paintSteps();
 
   let currentStage = -2;
   const updateProgress = () => {
@@ -111,10 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
     heroFx.setHeat(heat);
     heroFx.setDust(t < 2.8 ? 1 : Math.max(0, 1 - (t - 2.8) / 1.5));
     let idx = -1;
-    stages.forEach(([at], i) => { if (t >= at) idx = i; });
+    stages.forEach((at, i) => { if (t >= at) idx = i; });
     if (idx === currentStage) return;
     currentStage = idx;
-    progressLabel.textContent = idx < 0 ? 'مرّر لتشاهد التحضير' : stages[idx][1];
+    progressLabel.textContent = T.t(idx < 0 ? 'scrollHint' : 'stage' + idx);
     stepItems.forEach((li, i) => {
       li.classList.toggle('is-done', i < idx);
       li.classList.toggle('is-current', i === idx);
@@ -220,6 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
       { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power2.out', immediateRender: false },
       10.2
     );
+
+  // Language switch: rename the stages, then repaint the current one
+  document.addEventListener('langchange', () => {
+    paintSteps();
+    currentStage = -2;
+    updateProgress();
+  });
 
   // Flour puffs up when the dough ball first hits the board (bounce.out's first
   // impact is ~36% into the 1s drop that starts at 0.5). Forward scroll only.

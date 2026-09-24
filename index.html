@@ -41,9 +41,11 @@
       var skip = true;
       try { skip = !!location.hash || matchMedia('(prefers-reduced-motion: reduce)').matches || !!sessionStorage.getItem('intro-seen'); } catch (e) {}
       d.classList.add(skip ? 'no-intro' : 'intro-on');
+      /* English chosen on this device: set direction before first paint (js/i18n.js does the rest) */
+      try { if (localStorage.getItem('menu-lang') === 'en') { d.lang = 'en'; d.dir = 'ltr'; } } catch (e) {}
     })(document.documentElement);
   </script>
-  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
   <div class="intro" aria-hidden="true">
@@ -56,14 +58,15 @@
       <p class="intro__name" data-site="name">اسم المطعم</p>
     </div>
   </div>
-  <a class="skip-link" href="#menu">انتقل إلى المنيو</a>
+  <a class="skip-link" href="#menu" data-i18n="skip">انتقل إلى المنيو</a>
 
   <header class="navbar">
     <a href="#hero" class="navbar__logo"><span class="brand-mark" data-site-logo><span class="monogram" aria-hidden="true">ط</span></span><span data-site="shortName">مطعمك</span></a>
     <nav class="navbar__links">
-      <a href="#footer" class="navbar__link">تواصل معنا</a>
+      <a href="#footer" class="navbar__link" data-i18n="contact">تواصل معنا</a>
     </nav>
-    <a href="#menu" class="btn navbar__cta">المنيو</a>
+    <button type="button" class="navbar__lang" data-lang-toggle lang="en" aria-label="English" hidden>EN</button>
+    <a href="#menu" class="btn navbar__cta" data-i18n="menu">المنيو</a>
   </header>
 
   <main>
@@ -74,7 +77,7 @@
             <h1 data-site="slogan">من فرننا… لطاولتك</h1>
             <p class="hero__eyebrow" data-site="name">اسم المطعم</p>
             <p class="hero__tagline" data-site="tagline">بيتزا، معجنات وحلويات طازجة كل يوم</p>
-            <a href="#menu" class="btn hero__cta">شاهد المنيو</a>
+            <a href="#menu" class="btn hero__cta" data-i18n="seeMenu">شاهد المنيو</a>
           </div>
           <ol class="hero__steps" aria-hidden="true"></ol>
         </div>
@@ -109,7 +112,7 @@
           </div>
 
           <div class="hero__progress" aria-hidden="true">
-            <span class="hero__progress-label">مرّر لتشاهد التحضير</span>
+            <span class="hero__progress-label" data-i18n="scrollHint">مرّر لتشاهد التحضير</span>
             <div class="hero__progress-track"><div class="hero__progress-fill"></div></div>
           </div>
 
@@ -120,40 +123,40 @@
           </div>
 
           <div class="hero__done">
-            <h2>طازجة من فرننا لطاولتك</h2>
-            <p>اختار طلبك من المنيو وابعته مباشرة من طاولتك</p>
+            <h2 data-i18n="heroDoneTitle">طازجة من فرننا لطاولتك</h2>
+            <p data-i18n="heroDoneText">اختار طلبك من المنيو وابعته مباشرة من طاولتك</p>
           </div>
 
-          <a href="#menu" class="btn hero__menu-btn">شاهد المنيو</a>
-          <a href="#menu" class="hero__skip">تخطَّ للمنيو ←</a>
+          <a href="#menu" class="btn hero__menu-btn" data-i18n="seeMenu">شاهد المنيو</a>
+          <a href="#menu" class="hero__skip" data-i18n="skipHero">تخطَّ للمنيو ←</a>
         </div>
       </div>
     </section>
 
     <section id="menu" class="menu">
       <header class="menu__head">
-        <h2>المنيو</h2>
+        <h2 data-i18n="menu">المنيو</h2>
         <p data-site="currencyNote">الأسعار بالدينار الأردني</p>
         <div class="menu__service" hidden>
           <button type="button" class="menu__table" aria-expanded="false" aria-controls="table-actions">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v11M19 9v11"/><path d="M8 5h8"/><path d="M12 5v4"/></svg>
-            <span class="menu__table-label">طاولة رقم <b></b></span>
+            <span class="menu__table-label"><span data-i18n="tableLabel">طاولة رقم</span> <b></b></span>
             <svg class="icon menu__table-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
           </button>
           <div class="menu__actions" id="table-actions" hidden>
-            <button type="button" class="menu__action" data-service="waiter"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16.5v-5a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg> <span>نادِ الجرسون</span></button>
-            <button type="button" class="menu__action" data-service="bill"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21Z"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg> <span>اطلب الحساب</span></button>
+            <button type="button" class="menu__action" data-service="waiter"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16.5v-5a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg> <span data-i18n="callWaiter">نادِ الجرسون</span></button>
+            <button type="button" class="menu__action" data-service="bill"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21Z"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg> <span data-i18n="askBill">اطلب الحساب</span></button>
           </div>
         </div>
         <label class="menu__search">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M11 4a7 7 0 1 0 4.4 12.4l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" fill="currentColor"/></svg>
-          <input type="search" enterkeyhint="search" autocomplete="off" placeholder="ابحث عن صنف… مثلاً: كنافة" aria-label="ابحث في المنيو">
+          <input type="search" enterkeyhint="search" autocomplete="off" placeholder="ابحث عن صنف… مثلاً: كنافة" aria-label="ابحث في المنيو" data-i18n-ph="searchPh" data-i18n-aria="searchLabel">
         </label>
       </header>
       <section class="menu__featured" aria-labelledby="feat-title" hidden></section>
-      <nav class="menu__chips" aria-label="أقسام المنيو"></nav>
+      <nav class="menu__chips" aria-label="أقسام المنيو" data-i18n-aria="chipsLabel"></nav>
       <div class="menu__list"></div>
-      <p class="menu__empty" hidden>ما لقينا هالصنف — جرّب كلمة تانية</p>
+      <p class="menu__empty" data-i18n="empty" hidden>ما لقينا هالصنف — جرّب كلمة تانية</p>
     </section>
   </main>
 
@@ -165,9 +168,9 @@
     <div class="footer__hours"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg> <span data-site="hours">يومياً من 9 صباحاً حتى 12 منتصف الليل</span></div>
     <div class="footer__phones"></div>
     <div class="footer__social">
-      <a href="#" data-social="whatsapp" target="_blank" rel="noopener">واتساب</a>
-      <a href="#" data-social="instagram" target="_blank" rel="noopener">إنستغرام</a>
-      <a href="#" data-social="facebook" target="_blank" rel="noopener">فيسبوك</a>
+      <a href="#" data-social="whatsapp" target="_blank" rel="noopener" data-i18n="whatsapp">واتساب</a>
+      <a href="#" data-social="instagram" target="_blank" rel="noopener" data-i18n="instagram">إنستغرام</a>
+      <a href="#" data-social="facebook" target="_blank" rel="noopener" data-i18n="facebook">فيسبوك</a>
     </div>
     <p class="footer__copy" data-site="copyright">© اسم المطعم</p>
   </footer>
@@ -175,7 +178,7 @@
   <div class="cartbar" hidden>
     <button type="button" class="cartbar__btn">
       <span class="cartbar__count">0</span>
-      <span class="cartbar__label">عرض الطلب</span>
+      <span class="cartbar__label" data-i18n="viewOrder">عرض الطلب</span>
       <span class="cartbar__total">0.00 د.أ</span>
     </button>
   </div>
@@ -183,18 +186,18 @@
   <dialog class="cart" aria-labelledby="cart-title">
     <div class="cart__inner">
       <header class="cart__head">
-        <h2 id="cart-title" tabindex="-1" autofocus>طلبك</h2>
-        <button type="button" class="cart__close" aria-label="إغلاق">✕</button>
+        <h2 id="cart-title" tabindex="-1" autofocus data-i18n="yourOrder">طلبك</h2>
+        <button type="button" class="cart__close" aria-label="إغلاق" data-i18n-aria="close">✕</button>
       </header>
       <div class="cart__done" hidden>
         <svg class="cart__check" viewBox="0 0 52 52" aria-hidden="true">
           <circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="2.5"/>
           <path d="m15 27 7.5 7.5L38 19" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <h3>طلبك جاهز بواتساب</h3>
-        <p>اضغط «إرسال» بواتساب ليوصل طلبك للمطعم.</p>
-        <button type="button" class="cart__back">رجوع للمنيو</button>
-        <button type="button" class="cart__again">طلب جديد</button>
+        <h3 data-i18n="doneTitle">طلبك جاهز بواتساب</h3>
+        <p data-i18n="doneText">اضغط «إرسال» بواتساب ليوصل طلبك للمطعم.</p>
+        <button type="button" class="cart__back" data-i18n="backToMenu">رجوع للمنيو</button>
+        <button type="button" class="cart__again" data-i18n="newOrder">طلب جديد</button>
       </div>
       <ul class="cart__lines"></ul>
       <section class="upsell" aria-labelledby="upsell-title" hidden>
@@ -203,20 +206,20 @@
       </section>
       <div class="cart__form">
         <label class="cart__table">
-          <span>رقم الطاولة</span>
-          <input type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="مثلاً 5">
+          <span data-i18n="tableNumber">رقم الطاولة</span>
+          <input type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="مثلاً 5" data-i18n-ph="tablePh">
         </label>
-        <p class="cart__error" hidden>اكتب رقم الطاولة لنعرف وين نجيب الطلب 🙏</p>
+        <p class="cart__error" data-i18n="tableError" hidden>اكتب رقم الطاولة لنعرف وين نجيب الطلب</p>
         <label class="cart__notes">
-          <span>ملاحظات (اختياري)</span>
-          <textarea rows="2" maxlength="300" placeholder="مثلاً: بدون بصل، زيادة جبنة…"></textarea>
+          <span data-i18n="notes">ملاحظات (اختياري)</span>
+          <textarea rows="2" maxlength="300" placeholder="مثلاً: بدون بصل، زيادة جبنة…" data-i18n-ph="notesPh"></textarea>
         </label>
-        <div class="cart__total"><span>المجموع</span><strong class="cart__sum">0.00 د.أ</strong></div>
+        <div class="cart__total"><span data-i18n="total">المجموع</span><strong class="cart__sum">0.00 د.أ</strong></div>
         <button type="button" class="cart__send">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
-          إرسال الطلب عبر واتساب
+          <span data-i18n="send">إرسال الطلب عبر واتساب</span>
         </button>
-        <button type="button" class="cart__clear">تفريغ الطلب</button>
+        <button type="button" class="cart__clear" data-i18n="clear">تفريغ الطلب</button>
       </div>
     </div>
   </dialog>
@@ -225,21 +228,21 @@
 
   <div class="toast" role="status" aria-live="polite" hidden></div>
 
-  <a class="wa-fab" href="#" data-social="whatsapp" target="_blank" rel="noopener" aria-label="تواصل عبر واتساب">
+  <a class="wa-fab" href="#" data-social="whatsapp" target="_blank" rel="noopener" aria-label="تواصل عبر واتساب" data-i18n-aria="waFab">
     <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3.9 2.5 1 2.7.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
   </a>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="js/site-config.js?v=13"></script>
-  <script src="js/site.js?v=14"></script>
+  <script src="js/site-config.js?v=14"></script>
+  <script src="js/i18n.js?v=3"></script>
+  <script src="js/site.js?v=15"></script>
   <script src="js/hero-fx.js?v=15"></script>
-  <script src="js/main.js?v=13"></script>
+  <script src="js/main.js?v=14"></script>
   <script src="js/icons.js?v=13"></script>
-  <script src="js/i18n.js?v=2"></script>
   <script src="js/menu-data.js?v=15"></script>
   <script src="js/cat-fx.js?v=1"></script>
   <script src="js/item-sheet.js?v=4"></script>
-  <script src="js/menu.js?v=18"></script>
+  <script src="js/menu.js?v=19"></script>
 </body>
 </html>

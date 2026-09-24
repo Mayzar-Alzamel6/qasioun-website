@@ -4,7 +4,7 @@
  * before main.js / menu.js, so everything is in place before first paint.
  *
  * Markup hooks:
- *   data-site="key"   -> textContent from SITE[key] (plus "copyright")
+ *   data-site="key"   -> textContent from SITE[key], SITE[key + 'En'] in English (plus "copyright")
  *   data-site-logo    -> logo <img>, or a monogram when SITE.logo is empty
  *   data-social="x"   -> href for whatsapp / instagram / facebook (hidden if empty)
  *   .footer__phones   -> filled from SITE.phones
@@ -17,13 +17,19 @@
     document.documentElement.style.setProperty(prop, value);
   });
 
-  // Plain text bindings
-  const text = { ...S, copyright: `© ${new Date().getFullYear()} ${S.name || ''}` };
-  document.querySelectorAll('[data-site]').forEach((el) => {
-    const v = text[el.dataset.site];
-    if (typeof v === 'string' && v) el.textContent = v;
-  });
-  if (S.name) document.title = `${S.name} | المنيو`;
+  // Plain text bindings: SITE.<key>, or SITE.<key>En in English (js/i18n.js)
+  const bindText = () => {
+    const en = window.i18n && window.i18n.lang === 'en';
+    const get = (key) => (en && S[key + 'En']) || S[key];
+    const text = (key) => (key === 'copyright' ? `© ${new Date().getFullYear()} ${get('name') || ''}` : get(key));
+    document.querySelectorAll('[data-site]').forEach((el) => {
+      const v = text(el.dataset.site);
+      if (typeof v === 'string' && v) el.textContent = v;
+    });
+    if (S.name) document.title = `${get('name')} | ${en ? 'Menu' : 'المنيو'}`;
+  };
+  bindText();
+  document.addEventListener('langchange', bindText);
 
   // Logo or monogram (first letter of the short name)
   const letter = (S.shortName || S.name || '•').trim().charAt(0);

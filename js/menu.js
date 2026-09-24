@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const T = window.i18n;
   const icon = window.icon || (() => '');
   const WHATSAPP = SITE.whatsapp || '';
-  const CURRENCY = SITE.currency || '';
+  const CURRENCY = SITE.currency || ''; // WhatsApp order (always Arabic)
+  const cur = () => (T.lang === 'en' && SITE.currencyEn) || CURRENCY; // on screen
   const CART_KEY = 'menu-cart-v2';
   const TABLE_KEY = 'menu-table';
   const CART_TTL = 3 * 60 * 60 * 1000; // forget an abandoned cart after 3 hours
@@ -541,13 +542,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (motion && !bar.hidden) {
       gsap.to(shownTotal, {
         v: sum, duration: 0.45, ease: 'power2.out', overwrite: true,
-        onUpdate: () => { totalEl.textContent = `${money(Math.round(shownTotal.v))} ${CURRENCY}`; }
+        onUpdate: () => { totalEl.textContent = `${money(Math.round(shownTotal.v))} ${cur()}`; }
       });
     } else {
       shownTotal.v = sum;
-      totalEl.textContent = `${money(sum)} ${CURRENCY}`;
+      totalEl.textContent = `${money(sum)} ${cur()}`;
     }
-    sheet.querySelector('.cart__sum').textContent = `${money(sum)} ${CURRENCY}`;
+    sheet.querySelector('.cart__sum').textContent = `${money(sum)} ${cur()}`;
 
     lines.innerHTML = Object.entries(cart).map(([id, l]) => {
       const p = lineParts(l, false);
@@ -656,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.itemSheet.open(it, {
       origin,
       money,
-      currency: CURRENCY,
+      currency: cur(),
       onAdd: (l, rect) => {
         addLine({ k: it.key, ...l });
         // The sheet slides away first (0.3s)
@@ -777,6 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
   paintCart();
   animateFeatured();
+
+  // Language switch (js/i18n.js): redraw the menu and cart in the new language
+  document.addEventListener('langchange', () => {
+    window.itemSheet.close({ toOrigin: false });
+    window.menuApp.rebuild();
+  });
 
   // Re-render with new menu data or after a language switch (keeps the cart)
   window.menuApp = {
