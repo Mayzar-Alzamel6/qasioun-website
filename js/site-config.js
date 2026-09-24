@@ -11,15 +11,15 @@
  */
 window.SITE = {
   // Full name (hero, footer, copyright) and short name (navbar, logo letter)
-  name: 'اسم المطعم',
-  shortName: 'مطعمك',
+  name: 'مخبز طابون',
+  shortName: 'طابون',
 
   // Hero headline + the line under the name
-  slogan: 'من فرننا… لطاولتك',
-  tagline: 'بيتزا، معجنات وحلويات طازجة كل يوم',
+  slogan: 'من الطابون… لطاولتك',
+  tagline: 'بيتزا، مناقيش وحلويات طازجة من فرننا كل يوم',
 
   // Logo image path (square, ideally transparent WebP/PNG), e.g.
-  // 'assets/img/logo/logo.webp'. Leave empty to show a gold circle with
+  // 'assets/img/logo/logo.webp'. Leave empty to show a colored circle with
   // the first letter of shortName instead.
   logo: '',
 
@@ -44,9 +44,9 @@ window.SITE = {
 
   // Brand colors (CSS custom properties on :root)
   theme: {
-    '--color-bg-deep': '#220C00',
-    '--color-bg-mid': '#301B00',
-    '--color-gold': '#E5D26F',
-    '--color-cream': '#FFFEF7'
+    '--accent': '#D9432B',      // buttons, prices highlights, logo circle
+    '--accent-dark': '#B8331E', // hover/pressed
+    '--accent-soft': '#FBE3DD', // light tint (table badge, notes)
+    '--bg': '#F6F0E6'           // page background
   }
 };

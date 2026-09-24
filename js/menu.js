@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     revealView();
     refreshScroll();
     // Bring the start of the (now filtered) list up under the sticky chips
-    const offset = 62 + chips.offsetHeight + 8;
+    const offset = 64 + chips.offsetHeight + 8;
     const y = list.getBoundingClientRect().top + window.scrollY - offset;
     if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
   });

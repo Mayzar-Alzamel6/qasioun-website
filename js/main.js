@@ -138,8 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 0) Rest State -> Initial Scroll: Headline and scroll hint fade out
-  tl.to(headline, { opacity: 0, y: -35, duration: 0.5 }, 0.2)
-    .to(scrollHint, { opacity: 0, duration: 0.4 }, 0.2)
+  // On desktop the headline lives beside the scene and stays put.
+  if (!window.matchMedia('(min-width: 1024px)').matches) {
+    tl.to(headline, { opacity: 0, y: -35, duration: 0.5 }, 0.2);
+  }
+  tl.to(scrollHint, { opacity: 0, duration: 0.4 }, 0.2)
 
     // 1) Step 1: Dough ball drops onto the wooden board with bounce
     .to(layer('dough-ball'), {
