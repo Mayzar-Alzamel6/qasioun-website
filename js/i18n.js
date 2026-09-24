@@ -36,7 +36,10 @@
       table: 'طاولة رقم {n}',
       callWaiter: 'نادِ الجرسون',
       askBill: 'اطلب الحساب',
-      removedItems: 'بعض الأصناف نفذت وتشالت من طلبك'
+      removedItems: 'بعض الأصناف نفذت وتشالت من طلبك',
+      serviceSent: 'رسالتك جاهزة بواتساب — اضغط إرسال',
+      prev: 'السابق',
+      next: 'التالي'
     },
     en: {
       all: 'All',
@@ -66,7 +69,10 @@
       table: 'Table {n}',
       callWaiter: 'Call the waiter',
       askBill: 'Ask for the bill',
-      removedItems: 'Some items sold out and were removed from your order'
+      removedItems: 'Some items sold out and were removed from your order',
+      serviceSent: 'Your message is ready in WhatsApp — tap send',
+      prev: 'Previous',
+      next: 'Next'
     }
   };
 

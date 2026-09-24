@@ -38,10 +38,10 @@
     const price = (f) => opts.money(f);
     const sizes = it.sizes.length > 1
       ? `<fieldset class="isheet__group">
-          <legend>${T.t('chooseSize')}</legend>
+          <legend>${it.cat.sizeTitle ? esc(L(it.cat.sizeTitle, it.cat.sizeTitleEn)) : T.t('chooseSize')}</legend>
           ${it.sizes.map((s, i) => `<label class="opt">
             <input type="radio" name="s" value="${i}"${i === 0 ? ' checked' : ''}>
-            <span class="opt__name">${esc(L(s.label, s.labelEn))}</span>
+            <span class="opt__name">${esc(L(s.orderLabel, s.labelEn))}</span>
             <bdi class="opt__price">${price(s.price)}</bdi>
           </label>`).join('')}
         </fieldset>`
@@ -146,7 +146,9 @@
     total.textContent = `${opts.money(unit * qty)} ${opts.currency}`;
   };
 
-  const lock = (on) => html.classList.toggle('sheet-open', on);
+  // Page scroll stays locked while any dialog is open (the item sheet can
+  // open on top of the cart from its suggestions)
+  const lock = (on) => html.classList.toggle('sheet-open', on || !!document.querySelector('dialog[open]'));
 
   const show = () => {
     dlg.showModal();

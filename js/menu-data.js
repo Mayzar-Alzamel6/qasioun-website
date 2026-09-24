@@ -8,6 +8,7 @@
  *   img         optional banner photo; without it `icon` (a name from js/icons.js) is shown
  *   cols, colsEn  optional sizes; then an item's price is a list, one per size
  *               (null = size not available)
+ *   colsTitle, colsTitleEn  optional heading for that choice (default: choose a size)
  *   addons      optional extras for every item: [name, English, price]
  *   choices     optional pick-one options (no price), first option is the default:
  *               { title, en, options: [[Arabic, English], ...] }
@@ -75,6 +76,7 @@
     {
       id: 'sandwiches', title: 'السندويشات', en: 'Sandwiches', img: 'assets/img/menu/sandwiches.webp', icon: 'sandwich',
       cols: ['عادي', 'صاج'], colsEn: ['Regular bread', 'Saj bread'],
+      colsTitle: 'اختر الخبز', colsTitleEn: 'Choose the bread',
       sizePrefix: 'خبز ',
       orderPrefix: 'ساندويش ',
       addons: [['بطاطا داخل الساندويش', 'Fries inside', '0.25'], ['جبنة', 'Cheese', '0.25'], ['صوص ثوم زيادة', 'Extra garlic sauce', '0.10']],

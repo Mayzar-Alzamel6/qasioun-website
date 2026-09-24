@@ -43,7 +43,7 @@
       d.classList.add(skip ? 'no-intro' : 'intro-on');
     })(document.documentElement);
   </script>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
   <div class="intro" aria-hidden="true">
@@ -134,12 +134,23 @@
       <header class="menu__head">
         <h2>المنيو</h2>
         <p data-site="currencyNote">الأسعار بالدينار الأردني</p>
-        <p class="menu__table" hidden><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v11M19 9v11"/><path d="M8 5h8"/><path d="M12 5v4"/></svg> طاولة رقم <b></b></p>
+        <div class="menu__service" hidden>
+          <button type="button" class="menu__table" aria-expanded="false" aria-controls="table-actions">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v11M19 9v11"/><path d="M8 5h8"/><path d="M12 5v4"/></svg>
+            <span class="menu__table-label">طاولة رقم <b></b></span>
+            <svg class="icon menu__table-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
+          </button>
+          <div class="menu__actions" id="table-actions" hidden>
+            <button type="button" class="menu__action" data-service="waiter"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16.5v-5a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg> <span>نادِ الجرسون</span></button>
+            <button type="button" class="menu__action" data-service="bill"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21Z"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg> <span>اطلب الحساب</span></button>
+          </div>
+        </div>
         <label class="menu__search">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M11 4a7 7 0 1 0 4.4 12.4l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z" fill="currentColor"/></svg>
           <input type="search" enterkeyhint="search" autocomplete="off" placeholder="ابحث عن صنف… مثلاً: كنافة" aria-label="ابحث في المنيو">
         </label>
       </header>
+      <section class="menu__featured" aria-labelledby="feat-title" hidden></section>
       <nav class="menu__chips" aria-label="أقسام المنيو"></nav>
       <div class="menu__list"></div>
       <p class="menu__empty" hidden>ما لقينا هالصنف — جرّب كلمة تانية</p>
@@ -186,6 +197,10 @@
         <button type="button" class="cart__again">طلب جديد</button>
       </div>
       <ul class="cart__lines"></ul>
+      <section class="upsell" aria-labelledby="upsell-title" hidden>
+        <h3 class="upsell__title" id="upsell-title">بتحب تضيف؟</h3>
+        <ul class="upsell__track"></ul>
+      </section>
       <div class="cart__form">
         <label class="cart__table">
           <span>رقم الطاولة</span>
@@ -208,6 +223,8 @@
 
   <dialog class="isheet" aria-labelledby="isheet-title"></dialog>
 
+  <div class="toast" role="status" aria-live="polite" hidden></div>
+
   <a class="wa-fab" href="#" data-social="whatsapp" target="_blank" rel="noopener" aria-label="تواصل عبر واتساب">
     <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3.9 2.5 1 2.7.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
   </a>
@@ -219,10 +236,10 @@
   <script src="js/hero-fx.js?v=15"></script>
   <script src="js/main.js?v=13"></script>
   <script src="js/icons.js?v=13"></script>
-  <script src="js/i18n.js?v=1"></script>
-  <script src="js/menu-data.js?v=14"></script>
+  <script src="js/i18n.js?v=2"></script>
+  <script src="js/menu-data.js?v=15"></script>
   <script src="js/cat-fx.js?v=1"></script>
-  <script src="js/item-sheet.js?v=2"></script>
-  <script src="js/menu.js?v=15"></script>
+  <script src="js/item-sheet.js?v=4"></script>
+  <script src="js/menu.js?v=18"></script>
 </body>
 </html>

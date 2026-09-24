@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const list = document.querySelector('.menu__list');
   const search = document.querySelector('.menu__search input');
   const empty = document.querySelector('.menu__empty');
+  const featured = document.querySelector('.menu__featured');
   if (!chips || !list) return;
 
   // Prices are handled in hundredths of the currency unit to avoid
@@ -48,7 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const normalize = (menu) => menu.map((c) => {
     const cat = {
       id: c.id, title: c.title, en: c.en || '', img: c.img || '', icon: c.icon || 'dish',
-      note: c.note || '', noteEn: c.noteEn || '', items: []
+      note: c.note || '', noteEn: c.noteEn || '',
+      sizeTitle: c.colsTitle || '', sizeTitleEn: c.colsTitleEn || '', items: []
     };
     const cols = Array.isArray(c.cols) ? c.cols : null;
     cat.items = (c.items || []).map((raw) => {
@@ -134,6 +136,36 @@ document.addEventListener('DOMContentLoaded', () => {
       ${c.note ? `<p class="menu__note">${esc(L(c.note, c.noteEn))}</p>` : ''}
     </section>`;
 
+  // "Most loved" row: featured items as big photo cards. An item without its
+  // own photo borrows its category's; the slot placeholder covers the rest.
+  const featCardHtml = (it) => {
+    const src = it.photo ? it.photo.src : it.cat.img;
+    return `<li class="feat__card" data-key="${esc(it.key)}">
+      <div class="feat__photo${src ? '' : ' is-empty'}">
+        ${icon(it.cat.icon, 'menu__ph')}
+        ${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('is-empty')">` : ''}
+      </div>
+      <div class="feat__body">
+        <h4 class="feat__name"><button type="button" class="menu__open" data-open="${esc(it.key)}">${esc(L(it.name, it.en))}</button></h4>
+        <p class="feat__cat">${esc(L(it.cat.title, it.cat.en))}</p>
+        <div class="feat__row">
+          ${priceHtml(it)}
+          <span class="menu__qty" data-qty="${esc(it.key)}"></span>
+        </div>
+      </div>
+    </li>`;
+  };
+
+  const featHtml = (feats) => `
+    <div class="feat__head">
+      <h3 id="feat-title">${icon('star')}${T.t('featured')}</h3>
+      <div class="feat__nav">
+        <button type="button" class="feat__arrow" data-feat="-1" aria-label="${T.t('prev')}">${icon('chevron')}</button>
+        <button type="button" class="feat__arrow" data-feat="1" aria-label="${T.t('next')}">${icon('chevron')}</button>
+      </div>
+    </div>
+    <ul class="feat__track">${feats.map(featCardHtml).join('')}</ul>`;
+
   /* ---------------------------------------------------------------------
      Category filter + live search
      Chips filter the list to one category ("الكل" shows everything).
@@ -159,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     empty.hidden = any;
     chips.hidden = !!q;
+    if (featured) featured.hidden = !!q || filter !== 'all' || !featured.firstElementChild;
   };
 
   // Motion is optional: everything works without GSAP or with reduced motion.
@@ -214,6 +247,15 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshTimer = setTimeout(() => ScrollTrigger.refresh(), 150);
   };
 
+  // Menu sections use content-visibility: auto (see style.css), so their real
+  // height is only known once they first render: re-measure the triggers then.
+  const measured = new WeakSet();
+  document.addEventListener('contentvisibilityautostatechange', (e) => {
+    if (e.skipped || measured.has(e.target)) return;
+    measured.add(e.target);
+    refreshScroll();
+  }, true); // capture: the event doesn't bubble
+
   // Parallax on banner photos only (icon banners stay still)
   let parallax = [];
   const setupParallax = () => {
@@ -237,12 +279,47 @@ document.addEventListener('DOMContentLoaded', () => {
     ).join('');
     chips.prepend(indicator);
     list.innerHTML = cats.map(catHtml).join('');
+    if (featured) {
+      const feats = [...items.values()].filter((it) => it.featured && !it.soldOut);
+      featured.innerHTML = feats.length ? featHtml(feats) : '';
+    }
     items.forEach((_, key) => paintItem(key));
     applyView();
     setActive(filter, false);
     setupParallax();
     refreshScroll();
   };
+
+  // Featured cards rise in the first time the row scrolls into view
+  let featTrigger = null;
+  const animateFeatured = () => {
+    if (featTrigger) featTrigger.kill();
+    featTrigger = null;
+    if (!motion || !window.ScrollTrigger || !featured || featured.hidden) return;
+    const cards = featured.querySelectorAll('.feat__card');
+    gsap.set(cards, { autoAlpha: 0, y: 26 });
+    featTrigger = ScrollTrigger.create({
+      trigger: featured,
+      start: 'top 90%',
+      once: true,
+      onEnter: () => gsap.to(cards, {
+        autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out', stagger: 0.07, clearProps: 'transform,opacity,visibility'
+      })
+    });
+  };
+
+  // Desktop arrows: scroll the row by two cards
+  if (featured) {
+    featured.addEventListener('click', (e) => {
+      const arrow = e.target.closest('[data-feat]');
+      if (!arrow) return;
+      const track = featured.querySelector('.feat__track');
+      const card = track.querySelector('.feat__card');
+      const step = card ? (card.offsetWidth + 14) * 2 : 300;
+      const rtl = getComputedStyle(track).direction === 'rtl';
+      track.scrollBy({ left: Number(arrow.dataset.feat) * step * (rtl ? -1 : 1), behavior: motion ? 'smooth' : 'auto' });
+    });
+  }
 
   chips.addEventListener('click', (e) => {
     const chip = e.target.closest('.menu__chip');
@@ -272,13 +349,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (active) moveIndicator(active, false);
   });
 
-  // The WhatsApp button sits over the "+" column (left side in RTL):
-  // hide it while the menu list is on screen.
+  // The WhatsApp button sits over the "+" buttons (left side in RTL):
+  // hide it while the menu list or the featured row is on screen.
   const fab = document.querySelector('.wa-fab');
   if (fab) {
-    new IntersectionObserver(([e]) => {
-      fab.classList.toggle('is-hidden', e.isIntersecting);
-    }).observe(list);
+    const visible = new Set();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target); });
+      fab.classList.toggle('is-hidden', visible.size > 0);
+    });
+    io.observe(list);
+    if (featured) io.observe(featured);
   }
 
 
@@ -292,13 +373,51 @@ document.addEventListener('DOMContentLoaded', () => {
     else table = cleanTable(sessionStorage.getItem(TABLE_KEY));
   } catch (e) { /* storage unavailable: keep the URL value only */ }
 
-  const tableBadge = document.querySelector('.menu__table');
+  // The table badge opens two quick requests (waiter / bill) sent over WhatsApp
+  const service = document.querySelector('.menu__service');
+  const serviceBtn = service && service.querySelector('.menu__table');
+  const actions = service && service.querySelector('.menu__actions');
   const showTable = () => {
-    if (!tableBadge) return;
-    tableBadge.hidden = !table;
-    tableBadge.querySelector('b').textContent = table;
+    if (!service) return;
+    service.hidden = !table;
+    service.querySelector('b').textContent = table;
+    service.classList.toggle('is-static', !WHATSAPP);
   };
   showTable();
+
+  const toggleActions = (open) => {
+    actions.hidden = !open;
+    serviceBtn.setAttribute('aria-expanded', String(open));
+    if (open && motion) {
+      gsap.fromTo(actions.children, { autoAlpha: 0, y: -6 }, { autoAlpha: 1, y: 0, duration: 0.25, stagger: 0.05, clearProps: 'all' });
+    }
+  };
+
+  /* Small status message above the cart bar */
+  const toastEl = document.querySelector('.toast');
+  let toastTimer;
+  const toast = (text) => {
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.hidden = true; }, 3200);
+  };
+
+  if (service) {
+    serviceBtn.addEventListener('click', () => { if (WHATSAPP) toggleActions(actions.hidden); });
+    actions.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-service]');
+      if (!b || !table) return;
+      // In Arabic: read by the staff
+      const text = b.dataset.service === 'bill'
+        ? `🧾 طاولة ${table}: الحساب لو سمحت`
+        : `🔔 طاولة ${table}: نرجو حضور الجرسون`;
+      window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      toggleActions(false);
+      toast(T.t('serviceSent'));
+    });
+  }
 
   /* ---------------------------------------------------------------------
      Cart: lines of { k: item key, s: size, a: [extras], c: [option per
@@ -391,7 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const size = it.sizes[l.s];
     return {
       name: ar ? it.orderName : L(it.name, it.en),
-      size: ar ? size.orderLabel : L(size.label, size.labelEn),
+      // Arabic keeps the prefix ("خبز صاج"); English labels are complete
+      size: ar || T.lang !== 'en' ? size.orderLabel : size.labelEn || size.label,
       extras: l.a.map((i) => pick(it.addons[i].name, it.addons[i].en)),
       options: it.choices.map((g, gi) => `${pick(g.title, g.en)}: ${pick(g.options[l.c[gi]].ar, g.options[l.c[gi]].en)}`),
       note: l.note
@@ -442,6 +562,33 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="cart__price"><bdi>${money(unitPrice(l) * l.n)}</bdi></span>
       </li>`;
     }).join('') || `<li class="cart__empty">${T.t('cartEmpty')}</li>`;
+    paintUpsell();
+  };
+
+  // "Add something?": one suggested item from each category that isn't in
+  // the order yet (items marked `suggest`), up to four
+  const upsell = sheet.querySelector('.upsell');
+  const paintUpsell = () => {
+    if (!upsell) return;
+    const inOrder = new Set(Object.values(cart).map((l) => items.get(l.k).cat.id));
+    const picks = [];
+    items.forEach((it) => {
+      if (picks.length < 4 && it.suggest && !it.soldOut && !inOrder.has(it.cat.id) && !picks.some((p) => p.cat === it.cat)) picks.push(it);
+    });
+    upsell.hidden = !inOrder.size || !picks.length;
+    upsell.querySelector('.upsell__title').textContent = T.t('upsell');
+    upsell.querySelector('.upsell__track').innerHTML = picks.map((it) => {
+      const src = it.photo ? it.photo.thumb : '';
+      const name = L(it.name, it.en);
+      return `<li class="upsell__card">
+        <div class="upsell__thumb${src ? '' : ' is-empty'}">
+          ${icon(it.cat.icon, 'menu__ph')}
+          ${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('is-empty')">` : ''}
+        </div>
+        <div class="upsell__text"><strong>${esc(name)}</strong><bdi>${money(Math.min(...it.sizes.map((z) => z.price)))}</bdi></div>
+        <button type="button" class="menu__add upsell__add" data-quick="${esc(it.key)}" aria-label="${esc(T.t('add', { name }))}">+</button>
+      </li>`;
+    }).join('');
   };
 
   const addLine = (l) => {
@@ -504,8 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const barDelay = (wasHidden) => (wasHidden ? 260 : 0);
 
   const openItem = (it, fromEl) => {
-    const row = fromEl.closest('.menu__item');
-    const origin = row && row.querySelector('.menu__thumb img');
+    const row = fromEl.closest('.menu__item, .feat__card');
+    const origin = row && row.querySelector('.menu__thumb img, .feat__photo img');
     window.itemSheet.open(it, {
       origin,
       money,
@@ -531,12 +678,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const from = quick.getBoundingClientRect();
       const wasHidden = bar.hidden;
       addLine({ ...plainLine(it), n: 1 });
-      flyToCart(from, barDelay(wasHidden));
+      if (!sheet.contains(quick)) flyToCart(from, barDelay(wasHidden));
     } else if (inc) {
       const from = inc.getBoundingClientRect();
       const wasHidden = bar.hidden;
       change(inc.dataset.inc, +1);
-      if (list.contains(inc)) flyToCart(from, barDelay(wasHidden));
+      if (!sheet.contains(inc)) flyToCart(from, barDelay(wasHidden));
     } else if (dec) {
       change(dec.dataset.dec, -1);
     } else if (open) {
@@ -629,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
   restoreCart();
   render();
   paintCart();
+  animateFeatured();
 
   // Re-render with new menu data or after a language switch (keeps the cart)
   window.menuApp = {
@@ -637,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const removed = pruneCart();
       render();
       paintCart();
+      if (removed) toast(T.t('removedItems'));
       return removed;
     }
   };
