@@ -773,11 +773,56 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------------------------------
      Start
      --------------------------------------------------------------------- */
-  setModel(window.MENU || []);
-  restoreCart();
-  render();
-  paintCart();
-  animateFeatured();
+  const start = (menu) => {
+    setModel(menu);
+    restoreCart(); // needs the real items to validate saved lines
+    render();
+    paintCart();
+    animateFeatured();
+  };
+
+  // Placeholder rows while the menu sheet loads on a first visit
+  const renderSkeleton = () => {
+    const card = `<div class="skel__banner"></div><div class="skel__card">${'<div class="skel__row"><span></span><span></span></div>'.repeat(4)}</div>`;
+    list.setAttribute('aria-busy', 'true');
+    list.innerHTML = `<div class="skel" aria-hidden="true">${card.repeat(2)}</div>`;
+  };
+
+  const src = window.menuSource;
+  if (!src || !src.enabled) {
+    start(window.MENU || []);
+  } else {
+    // Menu from the Google Sheet (js/sheet.js): this device's last copy shows
+    // at once and is refreshed in the background; a first visit waits for the
+    // sheet (4s at most, then the menu bundled in js/menu-data.js).
+    let started = false;
+    let shown = '';
+    const show = (menu) => {
+      const json = JSON.stringify(menu);
+      if (json === shown) return;
+      shown = json;
+      if (!started) {
+        started = true;
+        list.removeAttribute('aria-busy');
+        start(menu);
+      } else {
+        window.menuApp.rebuild(menu);
+      }
+    };
+    const cached = src.cached();
+    if (cached) show(cached); else renderSkeleton();
+    src.load(4000).then(show).catch(() => {
+      if (!started) show(window.MENU || []);
+      return src.load(15000).then(show); // slow network: one more, longer try
+    }).catch(() => {});
+    // Back on the page after a while: pick up sold-out items and new prices
+    let lastLoad = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastLoad < 60000) return;
+      lastLoad = Date.now();
+      src.load(6000).then(show).catch(() => {});
+    });
+  }
 
   // Language switch (js/i18n.js): redraw the menu and cart in the new language
   document.addEventListener('langchange', () => {

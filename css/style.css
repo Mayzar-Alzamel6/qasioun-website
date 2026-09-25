@@ -1357,6 +1357,50 @@ html.intro-on { overflow: hidden; }
   font-weight: 600;
 }
 
+/* Loading placeholder (menu from a Google Sheet, first visit) */
+.skel__banner,
+.skel__row span {
+  background: linear-gradient(90deg, var(--bg-2) 25%, #F8F3EB 50%, var(--bg-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.skel__banner {
+  height: clamp(180px, 42vw, 300px);
+  margin: 2rem 0 0.9rem;
+  border-radius: var(--radius);
+}
+
+.skel__card {
+  padding: 0.25rem 1.1rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.skel__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.skel__row:last-child { border-bottom: 0; }
+
+.skel__row span {
+  width: 55%;
+  height: 14px;
+  border-radius: 7px;
+}
+
+.skel__row span + span {
+  width: 80%;
+  height: 11px;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
 .menu__empty {
   text-align: center;
   padding: 3rem 1rem;
@@ -2386,7 +2430,8 @@ textarea:focus-visible {
 
   .cart__check circle, .cart__check path { stroke-dashoffset: 0; animation: none !important; }
 
-  .cart[open], .isheet[open], .isheet.is-closing, .cartbar, .toast { animation: none !important; }
+  .cart[open], .isheet[open], .isheet.is-closing, .cartbar, .toast,
+  .skel__banner, .skel__row span { animation: none !important; }
 }
 
 /* The CTA is centered with translate: keep it while pressed */

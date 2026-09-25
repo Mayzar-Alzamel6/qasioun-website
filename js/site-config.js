@@ -49,6 +49,11 @@ window.SITE = {
   instagram: '',
   facebook: '',
 
+  // Menu from a Google Sheet (optional): the ID from the sheet's link
+  // docs.google.com/spreadsheets/d/<ID>/edit. The sheet must be shared as
+  // "Anyone with the link: Viewer" (see js/sheet.js). Empty = js/menu-data.js.
+  sheetId: '',
+
   // Prices
   currency: 'د.أ',
   currencyNote: 'الأسعار بالدينار الأردني',
